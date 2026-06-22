@@ -2,7 +2,10 @@ from flask import Flask, request, render_template_string, redirect, url_for
 from openai import OpenAI
 
 app = Flask(__name__)
-client = OpenAI()
+import os
+from openai import OpenAI
+
+client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 gecmis = []
 
