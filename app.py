@@ -11,9 +11,6 @@ USERS_FILE = "users.json"
 DATA_FILE = "data.json"
 
 
-# =========================
-# DOSYA YARDIMCILARI
-# =========================
 def ensure_files():
     if not os.path.exists(USERS_FILE):
         with open(USERS_FILE, "w", encoding="utf-8") as f:
@@ -52,9 +49,6 @@ def save_data(data):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
-# =========================
-# OPENAI CLIENT
-# =========================
 def get_client():
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
@@ -69,10 +63,7 @@ def image_file_to_data_url(file_storage):
     return f"data:{mime_type};base64,{encoded}"
 
 
-# =========================
-# HTML
-# =========================
-HTML = """
+BASE_HTML = """
 <!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -87,10 +78,7 @@ HTML = """
             background: #0f172a;
             color: white;
         }
-        a {
-            text-decoration: none;
-            color: inherit;
-        }
+        a { text-decoration: none; color: inherit; }
         .layout {
             display: flex;
             min-height: 100vh;
@@ -211,8 +199,7 @@ HTML = """
             background: #020617;
             border-top: 1px solid #1e293b;
         }
-        .send-form,
-        .image-form {
+        .send-form, .image-form {
             display: flex;
             gap: 8px;
             margin-bottom: 10px;
@@ -251,14 +238,19 @@ HTML = """
             color: #38bdf8;
             font-weight: bold;
         }
+
         @media (max-width: 800px) {
-            .layout { flex-direction: column; }
+            .layout {
+                flex-direction: column;
+            }
             .sidebar {
                 width: 100%;
                 border-right: none;
                 border-bottom: 1px solid #1e293b;
             }
-            .messages { min-height: 50vh; }
+            .messages {
+                min-height: 50vh;
+            }
             .send-form, .image-form {
                 flex-direction: column;
             }
@@ -266,19 +258,16 @@ HTML = """
     </style>
 </head>
 <body>
-    {{ content|safe }}
+{{ content|safe }}
 </body>
 </html>
 """
 
 
 def render_page(content):
-    return render_template_string(HTML, content=content)
+    return render_template_string(BASE_HTML, content=content)
 
 
-# =========================
-# REGISTER
-# =========================
 @app.route("/register", methods=["GET", "POST"])
 def register():
     error = ""
@@ -291,7 +280,6 @@ def register():
             error = "Kullanıcı adı ve şifre boş olamaz."
         else:
             users = load_users()
-
             for user in users:
                 if user["username"] == username:
                     error = "Bu kullanıcı adı zaten kullanılıyor."
@@ -317,9 +305,6 @@ def register():
     return render_page(content)
 
 
-# =========================
-# LOGIN
-# =========================
 @app.route("/login", methods=["GET", "POST"])
 def login():
     error = ""
@@ -357,18 +342,12 @@ def login():
     return render_page(content)
 
 
-# =========================
-# LOGOUT
-# =========================
 @app.route("/logout")
 def logout():
     session.pop("user", None)
     return redirect(url_for("login"))
 
 
-# =========================
-# YENİ SOHBET
-# =========================
 @app.route("/new_chat")
 def new_chat():
     if "user" not in session:
@@ -380,9 +359,7 @@ def new_chat():
     if username not in data or not isinstance(data[username], dict):
         data[username] = {
             "active_chat": "chat1",
-            "chats": {
-                "chat1": []
-            }
+            "chats": {"chat1": []}
         }
 
     chats = data[username]["chats"]
@@ -394,9 +371,6 @@ def new_chat():
     return redirect(url_for("index"))
 
 
-# =========================
-# SOHBET DEĞİŞTİR
-# =========================
 @app.route("/switch/<chat_id>")
 def switch_chat(chat_id):
     if "user" not in session:
@@ -412,9 +386,6 @@ def switch_chat(chat_id):
     return redirect(url_for("index"))
 
 
-# =========================
-# SOHBETİ TEMİZLE
-# =========================
 @app.route("/clear_chat", methods=["POST"])
 def clear_chat():
     if "user" not in session:
@@ -432,9 +403,6 @@ def clear_chat():
     return redirect(url_for("index"))
 
 
-# =========================
-# ANA SAYFA / CHAT
-# =========================
 @app.route("/", methods=["GET", "POST"])
 def index():
     if "user" not in session:
@@ -447,9 +415,7 @@ def index():
     if username not in data or not isinstance(data[username], dict):
         data[username] = {
             "active_chat": "chat1",
-            "chats": {
-                "chat1": []
-            }
+            "chats": {"chat1": []}
         }
 
     if "active_chat" not in data[username]:
@@ -473,7 +439,6 @@ def index():
         if client is None:
             error = "Sunucuda OPENAI_API_KEY ayarlı değil."
         else:
-            # Yazı mesajı
             if action == "text":
                 soru = request.form.get("soru", "").strip()
 
@@ -500,7 +465,6 @@ def index():
                     save_data(data)
                     return redirect(url_for("index"))
 
-            # Resim yorumlat
             elif action == "image":
                 uploaded_file = request.files.get("image")
                 prompt = request.form.get("image_prompt", "").strip()
@@ -547,13 +511,11 @@ def index():
                     except Exception as e:
                         error = f"Resim yorumlatma hatası: {str(e)}"
 
-    # sohbet listesi
     chat_list_html = ""
     for cid in chats.keys():
         cls = "chat-item active" if cid == active_chat else "chat-item"
         chat_list_html += f'<a class="{cls}" href="/switch/{cid}">{cid}</a>'
 
-    # mesajlar
     messages_html = ""
     for mesaj in gecmis:
         role = mesaj.get("role", "assistant")
