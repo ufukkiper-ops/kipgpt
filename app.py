@@ -384,6 +384,7 @@ BASE_HTML = """
         if(role === 'user') {
             msgHtml.innerHTML = '<b>Sen:</b><br>' + text;
         } else {
+            // JavaScript ile canlı eklenen mesajların sınıfını CSS ile tam uyumlu hale getirdik (bot-text)
             msgHtml.innerHTML = '<b class="bot-text">AI:</b><br><span class="bot-text">' + text + '</span>';
         }
         
