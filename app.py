@@ -77,12 +77,8 @@ BASE_HTML = """
     <style>
         * { box-sizing: border-box; font-family: 'Inter', sans-serif; }
         body {
-            margin: 0;
-            background: #ffffff !important;
-            color: #1e293b !important;
-            display: flex;
-            height: 100vh;
-            overflow: hidden;
+            background-color: #ffffff !important;
+            color: #000000 !important;
         }
         a { text-decoration: none; color: inherit; }
         .layout {
