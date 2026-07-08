@@ -65,7 +65,7 @@ def image_file_to_data_url(file_storage):
     return f"data:{mime_type};base64,{encoded}"
 
 
-# Flask'ın şablon motoruyla çakışmaması için en güvenli HTML şablonu yapısı
+# f-string çakışmasını önlemek için güvenli HTML şablonu
 BASE_HTML = """
 <!DOCTYPE html>
 <html lang="tr">
@@ -208,17 +208,23 @@ BASE_HTML = """
         }
         .msg-user {
             background: rgb(2, 132, 199);
-            color: white;
+            color: white !important;
             align-self: flex-end;
             border-bottom-right-radius: 4px;
         }
+        
+        /* Bot mesaj kutusunun rengini ve içindeki her türlü yazının (b, p, li) siyah olmasını garantiliyoruz */
         .msg-bot {
-            background: rgb(241, 245, 249);
-            color: rgb(30, 41, 59);
+            background: rgb(241, 245, 249) !important;
+            color: rgb(15, 23, 42) !important;
             align-self: flex-start;
             border-bottom-left-radius: 4px;
             border: 1px solid rgb(226, 232, 240);
         }
+        .msg-bot * {
+            color: rgb(15, 23, 42) !important;
+        }
+        
         .msg img {
             max-width: 100%;
             border-radius: 10px;
