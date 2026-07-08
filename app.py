@@ -63,9 +63,9 @@ BASE_HTML = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="light">
     
-    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
-    <link rel="shortcut icon" type="image/x-icon" href="/static/favicon.ico">
-    <link rel="apple-touch-icon" sizes="192x192" href="/static/icon.png">
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico?v=3">
+    <link rel="shortcut icon" type="image/x-icon" href="/static/favicon.ico?v=3">
+    <link rel="apple-touch-icon" sizes="192x192" href="/static/icon.png?v=3">
     <meta name="mobile-web-app-capable" content="yes">
     
     <title>AI Asistan</title>
