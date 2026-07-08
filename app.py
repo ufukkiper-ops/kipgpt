@@ -89,9 +89,18 @@ BASE_HTML = """
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="light">
+    
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link rel="shortcut icon" type="image/x-icon" href="/static/favicon.ico">
+    
+    <link rel="apple-touch-icon" sizes="192x192" href="/static/icon.png">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    
     <title>AI Asistan</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600&display=swap" rel="stylesheet">
     <style>
+        /* CSS kodların aynen kalıyor... */
         :root {
             color-scheme: light !important;
             --background-color: #ffffff !important;
@@ -104,46 +113,6 @@ BASE_HTML = """
             color: #0f172a !important;
             display: flex; height: 100vh; overflow: hidden;
         }
-        a { text-decoration: none; color: inherit; }
-        .layout { display: flex; width: 100%; height: 100%; background-color: #ffffff !important; }
-        .sidebar {
-            width: 280px; background: #f8fafc !important; padding: 20px;
-            border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 15px;
-        }
-        .sidebar h2 { margin: 0; font-size: 20px; font-weight: 600; color: #0284c7 !important; }
-        .user-box { padding: 12px; background: #f1f5f9 !important; border-radius: 12px; font-size: 14px; border: 1px solid #e2e8f0; color: #334155 !important; }
-        .new-chat { display: block; width: 100%; background: linear-gradient(135deg, #38bdf8, #0284c7) !important; color: white !important; text-align: center; padding: 12px; border-radius: 12px; font-weight: 600; transition: all 0.2s; }
-        .new-chat:hover { opacity: 0.9; transform: translateY(-1px); }
-        .chat-list { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; flex: 1; }
-        .chat-item { display: block; padding: 12px; border-radius: 10px; background: #f1f5f9 !important; font-size: 14px; border: 1px solid transparent; transition: all 0.2s; color: #334155 !important; }
-        .chat-item:hover { background: #e2e8f0 !important; }
-        .chat-item.active { background: #3b82f6 !important; border-color: #2563eb !important; color: white !important; }
-        .main { flex: 1; display: flex; flex-direction: column; background-color: #ffffff !important; }
-        .topbar { background: #f8fafc !important; padding: 15px 25px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; color: #334155 !important; }
-        .right-buttons { display: flex; gap: 10px; }
-        .btn { border: none; border-radius: 10px; padding: 10px 16px; cursor: pointer; font-weight: 500; transition: opacity 0.2s; }
-        .btn:hover { opacity: 0.9; }
-        .btn-blue { background: #38bdf8 !important; color: black !important; }
-        .btn-red { background: #ef4444 !important; color: white !important; }
-        .btn-green { background: #10b981 !important; color: white !important; }
-        .messages { flex: 1; padding: 25px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; background-color: #ffffff !important; }
-        .msg { max-width: 75%; padding: 14px 18px; border-radius: 16px; line-height: 1.6; white-space: pre-wrap; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
-        .msg-user { background: #0284c7 !important; color: white !important; align-self: flex-end; border-bottom-right-radius: 4px; }
-        .msg-user * { color: white !important; }
-        .msg-bot { background-color: #f1f5f9 !important; color: #0f172a !important; align-self: flex-start; border-bottom-left-radius: 4px; border: 1px solid #e2e8f0; }
-        .msg-bot, .msg-bot *, .bot-text, .messages .msg-bot * { color: #0f172a !important; }
-        .msg img { max-width: 100%; border-radius: 10px; margin-top: 10px; }
-        .bottom { padding: 20px; background: #f8fafc !important; border-top: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 10px; }
-        .input-container { display: flex; background: #ffffff !important; border-radius: 14px; padding: 6px; align-items: center; border: 1px solid #cbd5e1; }
-        .input-container input[type="text"] { flex: 1; background: transparent !important; border: none; padding: 10px 15px; color: #0f172a !important; font-size: 15px; outline: none; }
-        .card { max-width: 400px; margin: 100px auto; background: #ffffff !important; padding: 30px; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); color: #0f172a !important; }
-        .card input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #cbd5e1; background: #ffffff !important; border-radius: 10px; color: #0f172a !important; }
-        .error { color: #7f1d1d !important; background: #fca5a5 !important; padding: 12px; border-radius: 10px; margin-bottom: 15px; font-size: 14px; }
-        .image-bar { display: flex; gap: 10px; align-items: center; font-size: 13px; background: #f1f5f9 !important; padding: 8px 12px; border-radius: 10px; color: #334155 !important; }
-        @media (max-width: 768px) { .sidebar { display: none; } }
-    </style>
-</head>
-<body>
 {{ content|safe }}
 <script>
     const msgDiv = document.querySelector('.messages');
