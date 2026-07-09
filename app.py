@@ -300,7 +300,9 @@ def mail_page():
         sender = request.form.get("sender")
         subject = request.form.get("subject")
         content = request.form.get("content")
-        user_instruction = request.form.get("user_instruction", "").strip() # Kullanıcının özel talimatı
+        user_instruction = request.form.get("user_instruction", "").strip()
+        current_draft = request.form.get("current_draft", "").strip() # Mevcut taslak metni
+        revize_notu = request.form.get("revize_notu", "").strip()     # Yeniden düzenleme notu
         
         if islem == "olustur":
             client = get_client()
@@ -308,9 +310,7 @@ def mail_page():
                 error = "Sunucuda OPENAI_API_KEY ayarlı değil."
             else:
                 try:
-                    # Yapay zekaya hem gelen maili hem de senin özel talimatını gönderiyoruz:
                     talimat_ekleme = f"\nKullanıcının Özel İsteği/Notu: {user_instruction}" if user_instruction else ""
-                    
                     prompt = f"""Gelen Mail Kimden: {sender}
 Konu: {subject}
 İçerik: {content}
@@ -327,6 +327,34 @@ Yukarıdaki maili, varsa kullanıcının özel isteğini/notunu dikkate alarak p
                 except Exception as e:
                     error = f"Yanıt oluşturulurken hata: {str(e)}"
                     
+        elif islem == "revize_et":
+            # 🔄 MEVCUT TASLAĞI YENİDEN DÜZENLEME AŞAMASI
+            client = get_client()
+            if client is None:
+                error = "Sunucuda OPENAI_API_KEY ayarlı değil."
+            else:
+                try:
+                    prompt = f"""Gelen Mail Kimden: {sender}
+Konu: {subject}
+İçerik: {content}
+
+Daha Önce Hazırlanan Taslak:
+{current_draft}
+
+Kullanıcının Taslağı Yeniden Düzenleme İsteği:
+{revize_notu}
+
+Lütfen daha önce hazırlanan taslağı, kullanıcının yeni düzenleme isteği doğrultusunda güncelleyerek yeniden Türkçe olarak yaz."""
+
+                    response = client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[{"role": "user", "content": prompt}]
+                    )
+                    ai_yaniti = response.choices[0].message.content
+                    secilen_mail = {"sender": sender, "subject": subject, "content": content}
+                except Exception as e:
+                    error = f"Taslak yeniden düzenlenirken hata: {str(e)}"
+
         elif islem == "gonder":
             final_reply = request.form.get("final_reply")
             try:
@@ -350,7 +378,7 @@ Yukarıdaki maili, varsa kullanıcının özel isteğini/notunu dikkate alarak p
                     <input type="hidden" name="subject" value="{m.get('subject', '')}">
                     <input type="hidden" name="content" value="{m.get('content', '')}">
                     
-                    <input type="text" name="user_instruction" placeholder="Yapay zekaya not bırakın (Örn: Teklifi reddet, haftaya ertele...)" 
+                    <input type="text" name="user_instruction" placeholder="Yapay zekaya not bırakın (Örn: Teklifi reddet...)" 
                            style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; box-sizing: border-box; background:#ffffff !important;">
                     
                     <button class="btn btn-blue" type="submit" style="padding: 8px 12px; font-size: 13px; align-self: flex-start;">🤖 KipGPT ile Yanıt Oluştur</button>
@@ -360,24 +388,43 @@ Yukarıdaki maili, varsa kullanıcının özel isteğini/notunu dikkate alarak p
     else:
         mail_items_html = "<p style='color:#64748b;'>Kutuda mail bulunamadı.</p>"
 
+    # 📝 Yapay zeka yanıt taslağı ekranı ve interaktif REVİZE ETME modülü
     ai_preview_html = ""
     if ai_yaniti:
         ai_preview_html = f"""
         <div class="user-box" style="margin-bottom: 25px; background: #f0fdf4 !important; border: 1px solid #bbf7d0; padding: 15px;">
+            <meta charset="UTF-8">
             <h4 style="margin-top:0; color:#166534; margin-bottom: 8px;">🤖 KipGPT Taslak Yanıtı</h4>
             <p style="font-size:12px; color:#64748b; margin-bottom:8px;">Alıcı: {secilen_mail.get('sender')}</p>
-            <form method="post">
+            
+            <form method="post" style="margin-bottom: 15px;">
                 <input type="hidden" name="islem" value="gonder">
                 <input type="hidden" name="sender" value="{secilen_mail.get('sender')}">
                 <input type="hidden" name="subject" value="{secilen_mail.get('subject')}">
                 <textarea name="final_reply" style="width:100%; height:150px; padding:10px; border-radius:8px; border:1px solid #cbd5e1; font-family:inherit; font-size:14px; margin-bottom:10px; box-sizing: border-box;">{ai_yaniti}</textarea>
                 <button class="btn btn-green" type="submit" style="width:100%; padding:10px; font-weight:600;">🚀 Yanıtı E-Posta Olarak Gönder</button>
             </form>
+            
+            <div style="background: #ffffff; padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1;">
+                <h5 style="margin: 0 0 8px 0; color: #334155; font-size: 13px;">🔄 Yanıtı Beğenmediniz mi? Yapay Zekaya Yeniden Düzenletin:</h5>
+                <form method="post" style="display: flex; flex-direction: column; gap: 8px;">
+                    <input type="hidden" name="islem" value="revize_et">
+                    <input type="hidden" name="sender" value="{secilen_mail.get('sender')}">
+                    <input type="hidden" name="subject" value="{secilen_mail.get('subject')}">
+                    <input type="hidden" name="content" value="{secilen_mail.get('content')}">
+                    <input type="hidden" name="current_draft" value="{ai_yaniti}">
+                    
+                    <input type="text" name="revize_notu" placeholder="Şu yönde yenile: (Örn: Daha kısa yaz, toplantı saatini 14:00 yap...)" required
+                           style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; box-sizing: border-box;">
+                    <button class="btn btn-blue" type="submit" style="padding: 6px 12px; font-size: 12px; align-self: flex-start; background: #64748b !important;">Taslağı Güncelle</button>
+                </form>
+            </div>
         </div>
         """
 
     content_html = f"""
     <div class="layout" style="justify-content: center; overflow-y: auto; padding: 20px 15px;">
+        <meta charset="UTF-8">
         <div class="card" style="max-width: 700px; margin: 0 auto; width: 100%; padding: 20px; box-sizing: border-box;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h2 style="margin:0; font-size:20px;">E-Posta Asistanı</h2>
