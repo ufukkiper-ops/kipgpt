@@ -1,4 +1,4 @@
-from mail import get_last_mails, analyze_mail
+from mail import get_last_mails, analyze_mail, send_reply_mail
 from flask import Flask, request, render_template_string, redirect, url_for, session, jsonify
 import os
 import json
@@ -68,7 +68,7 @@ BASE_HTML = """
     <link rel="apple-touch-icon" sizes="192x192" href="/static/icon.png?v=3">
     <meta name="mobile-web-app-capable" content="yes">
     
-    <title>AI Asistan</title>
+    <title>KipGPT</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -279,6 +279,81 @@ def clear_chat():
             save_data(data)
     return redirect(url_for("index"))
 
+@app.route("/mail", methods=["GET", "POST"])
+def mail_page():
+    if "user" not in session: 
+        return redirect(url_for("login"))
+        
+    username = session["user"]
+    error = ""
+    success_message = ""
+    mailler = []
+
+    try:
+        mailler = get_last_mails(count=5) 
+    except Exception as e:
+        error = f"Mailler çekilirken hata oluştu: {str(e)}"
+
+    if request.method == "POST":
+        sender = request.form.get("sender")
+        subject = request.form.get("subject")
+        content = request.form.get("content")
+        
+        client = get_client()
+        if client is None:
+            error = "Sunucuda OPENAI_API_KEY ayarlı değil."
+        else:
+            try:
+                prompt = f"Gelen Mail Kimden: {sender}\nKonu: {subject}\nİçerik: {content}\n\nBu maili profesyonel, kibar ve çözüm odaklı şekilde Türkçe olarak yanıtla."
+                response = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[{"role": "user", "content": prompt}]
+                )
+                ai_yaniti = response.choices[0].message.content
+
+                send_reply_mail(to_email=sender, subject=f"Re: {subject}", body=ai_yaniti)
+                success_message = f"{sender} adresine yapay zeka yanıtı başarıyla gönderildi!"
+            except Exception as e:
+                error = f"Yanıt gönderilirken hata oluştu: {str(e)}"
+
+    mail_items_html = ""
+    if mailler:
+        for m in mailler:
+            mail_items_html += f"""
+            <div class="user-box" style="margin-bottom: 15px; background: #ffffff !important; border-left: 4px solid #10b981;">
+                <p><b>Kimden:</b> {m.get('sender', 'Bilinmiyor')}</p>
+                <p><b>Konu:</b> {m.get('subject', 'Konu Yok')}</p>
+                <p style="background: #f8fafc; padding: 10px; border-radius: 8px; font-size: 13px;">{m.get('content', '')}</p>
+                <form method="post" style="margin-top: 10px;">
+                    <input type="hidden" name="sender" value="{m.get('sender', '')}">
+                    <input type="hidden" name="subject" value="{m.get('subject', '')}">
+                    <input type="hidden" name="content" value="{m.get('content', '')}">
+                    <button class="btn btn-green" type="submit" style="padding: 6px 12px; font-size: 13px;">🤖 KipGPT ile Yanıtla ve Gönder</button>
+                </form>
+            </div>
+            """
+    else:
+        mail_items_html = "<p style='color:#64748b;'>Kutuda mail bulunamadı.</p>"
+
+    content_html = f"""
+    <div class="layout" style="justify-content: center; overflow-y: auto; padding: 40px 20px;">
+        <div class="card" style="max-width: 700px; margin: 0 auto; width: 100%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin:0;">E-Posta Asistanı</h2>
+                <a href="/"><button class="btn btn-blue" style="padding: 6px 12px; font-size: 13px;">Sohbete Dön</button></a>
+            </div>
+            {"<div class='error'>" + error + "</div>" if error else ""}
+            {"<div class='error' style='background:#d1fae5 !important; color:#065f46 !important;'> " + success_message + "</div>" if success_message else ""}
+            <div style="margin-top: 20px;">
+                <h3 style="font-size: 16px; color: #334155;">Son Gelen E-Postalar</h3>
+                <hr style="border: 0; border-top: 1px solid #e2e8f0; margin-bottom: 15px;">
+                {mail_items_html}
+            </div>
+        </div>
+    </div>
+    """
+    return render_page(content_html)
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     if "user" not in session: return redirect(url_for("login"))
@@ -391,7 +466,6 @@ def index():
                     <input id="chat-input" type="text" placeholder="Mesajınızı buraya yazın..." autofocus>
                     <button class="btn btn-blue" type="submit">Gönder</button>
                 </form>
-                
                 <form class="image-bar" method="post" enctype="multipart/form-data">
                     <input type="hidden" name="action" value="image">
                     <input type="file" name="image" accept="image/*" required style="color:#0f172a; font-size:12px;">
