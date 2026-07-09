@@ -179,6 +179,67 @@ def render_page(content):
 def register():
     error = ""
     if request.method == "POST":
+        if islem == "olustur":
+            client = get_client()
+            if client is None:
+                error = "Sunucuda OPENAI_API_KEY ayarlı değil."
+            else:
+                try:
+                    talimat_ekleme = f"\nKullanıcının Özel İsteği/Notu: {user_instruction}" if user_instruction else ""
+                    prompt = f"""Gelen Mail Kimden: {sender}
+Konu: {subject}
+İçerik: {content}
+{talimat_ekleme}
+
+Yukarıdaki maili, kullanıcının özel isteğini dikkate alarak profesyonel, kibar ve çözüm odaklı şekilde Türkçe olarak yanıtla.
+
+⚠️ KRİTİK KURAL: Yanıtında ASLA "İşte güncellenmiş mail", "Tabii ki yazıyorum", "Merhaba" (eğer maile ait değilse) gibi hiçbir giriş, açıklama veya kapanış cümlesi kurma. Sadece ve sadece KARŞI TARAFA GÖNDERİLECEK mail metnini yaz."""
+
+                    response = client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[{"role": "user", "content": prompt}]
+                    )
+                    
+                    # 🎯 TÜRKÇE KARAKTER GARANTİSİ: Gelen yanıtı alıp utf-8 ile sağlama alıyoruz
+                    raw_content = response['choices'][0]['message']['content'].strip()
+                    ai_yaniti = raw_content.encode('utf-8').decode('utf-8')
+                    
+                    secilen_mail = {"sender": sender, "subject": subject, "content": content}
+                except Exception as e:
+                    error = f"Yanıt oluşturulurken hata: {str(e)}"
+                    
+        elif islem == "revize_et":
+            client = get_client()
+            if client is None:
+                error = "Sunucuda OPENAI_API_KEY ayarlı değil."
+            else:
+                try:
+                    prompt = f"""Gelen Mail Kimden: {sender}
+Konu: {subject}
+İçerik: {content}
+
+Daha Önce Hazırlanan Taslak:
+{current_draft}
+
+Kullanıcının Taslağı Yeniden Düzenleme İsteği:
+{revize_notu}
+
+Yukarıdaki eski taslağı, kullanıcının yeni düzenleme isteği doğrultusunda güncelleyerek yeniden Türkçe olarak yaz.
+
+⚠️ KRİTİK KURAL: Yanıtında ASLA "İsteğiniz üzerine düzelttim", "Şöyle değiştirdim" gibi hiçbir açıklama cümlesi yer almasın. Sadece ve sadece KARŞI TARAFA GÖNDERİLECEK olan nihai mail metnini döndür."""
+
+                    response = client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[{"role": "user", "content": prompt}]
+                    )
+                    
+                    # 🎯 TÜRKÇE KARAKTER GARANTİSİ: Gelen yanıtı alıp utf-8 ile sağlama alıyoruz
+                    raw_content = response.choices[0].message.content.strip()
+                    ai_yaniti = raw_content.encode('utf-8').decode('utf-8')
+                    
+                    secilen_mail = {"sender": sender, "subject": subject, "content": content}
+                except Exception as e:
+                    error = f"Taslak yeniden düzenlenirken hata: {str(e)}"
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "").strip()
         if username == "" or password == "":
@@ -280,188 +341,75 @@ def clear_chat():
     return redirect(url_for("index"))
 
 @app.route("/mail", methods=["GET", "POST"])
-def mail_page():
-    if "user" not in session: 
-        return redirect(url_for("login"))
-        
-    error = ""
-    success_message = ""
-    ai_yaniti = ""
-    secilen_mail = {}
-    mailler = []
+def get_last_mails(count=5):
+    mail = connect_mail()
+    _, messages = mail.search(None, "ALL")
+    mail_ids = messages[0].split()
 
-    try:
-        mailler = get_last_mails(count=5) 
-    except Exception as e:
-        error = f"Mailler çekilirken hata oluştu: {str(e)}"
+    result = []
 
-    if request.method == "POST":
-        islem = request.form.get("islem")
-        sender = request.form.get("sender")
-        subject = request.form.get("subject")
-        content = request.form.get("content")
-        user_instruction = request.form.get("user_instruction", "").strip()
-        current_draft = request.form.get("current_draft", "").strip()
-        revize_notu = request.form.get("revize_notu", "").strip()
-        
-        if islem == "olustur":
-            client = get_client()
-            if client is None:
-                error = "Sunucuda OPENAI_API_KEY ayarlı değil."
+    for i in reversed(mail_ids[-count:]):
+        try:
+            _, msg_data = mail.fetch(i, "(RFC822)")
+            raw = msg_data[0][1]
+            msg = email.message_from_bytes(raw)
+
+            # 🛠️ Konu Başlığı Çözümü (Gelişmiş UTF-8 Koruma)
+            subject = ""
+            if msg["Subject"]:
+                subject_parts = decode_header(msg["Subject"])
+                for part, enc in subject_parts:
+                    if isinstance(part, bytes):
+                        subject += part.decode(enc if enc and enc != "unknown-8bit" else "utf-8", errors="replace")
+                    else:
+                        subject += str(part)
             else:
-                try:
-                    talimat_ekleme = f"\nKullanıcının Özel İsteği/Notu: {user_instruction}" if user_instruction else ""
-                    prompt = f"""Gelen Mail Kimden: {sender}
-Konu: {subject}
-İçerik: {content}
-{talimat_ekleme}
+                subject = "Konu Yok"
 
-Yukarıdaki maili, kullanıcının özel isteğini dikkate alarak profesyonel, kibar ve çözüm odaklı şekilde Türkçe olarak yanıtla.
-
-⚠️ KRİTİK KURAL: Yanıtında ASLA "İşte güncellenmiş mail", "Tabii ki yazıyorum", "Merhaba" (eğer maile ait değilse) gibi hiçbir giriş, açıklama veya kapanış cümlesi kurma. Sadece ve sadece KARŞI TARAFA GÖNDERİLECEK mail metnini yaz."""
-
-                    response = client.chat.completions.create(
-                        model="gpt-4o-mini",
-                        messages=[{"role": "user", "content": prompt}]
-                    )
-                    ai_yaniti = response.choices[0].message.content.strip()
-                    secilen_mail = {"sender": sender, "subject": subject, "content": content}
-                except Exception as e:
-                    error = f"Yanıt oluşturulurken hata: {str(e)}"
-                    
-        elif islem == "revize_et":
-            client = get_client()
-            if client is None:
-                error = "Sunucuda OPENAI_API_KEY ayarlı değil."
+            # 🛠️ Gönderici Çözümü (Gelişmiş UTF-8 Koruma)
+            from_text = ""
+            if msg["From"]:
+                from_parts = decode_header(msg["From"])
+                for part, enc in from_parts:
+                    if isinstance(part, bytes):
+                        from_text += part.decode(enc if enc and enc != "unknown-8bit" else "utf-8", errors="replace")
+                    else:
+                        from_text += str(part)
             else:
-                try:
-                    prompt = f"""Gelen Mail Kimden: {sender}
-Konu: {subject}
-İçerik: {content}
-
-Daha Önce Hazırlanan Taslak:
-{current_draft}
-
-Kullanıcının Taslağı Yeniden Düzenleme İsteği:
-{revize_notu}
-
-Yukarıdaki eski taslağı, kullanıcının yeni düzenleme isteği doğrultusunda güncelleyerek yeniden Türkçe olarak yaz.
-
-⚠️ KRİTİK KURAL: Yanıtında ASLA "İsteğiniz üzerine düzelttim", "Şöyle değiştirdim" gibi hiçbir açıklama cümlesi yer almasın. Sadece ve sadece KARŞI TARAFA GÖNDERİLECEK olan nihai mail metnini döndür."""
-
-                    response = client.chat.completions.create(
-                        model="gpt-4o-mini",
-                        messages=[{"role": "user", "content": prompt}]
-                    )
-                    ai_yaniti = response.choices[0].message.content.strip()
-                    secilen_mail = {"sender": sender, "subject": subject, "content": content}
-                except Exception as e:
-                    error = f"Taslak yeniden düzenlenirken hata: {str(e)}"
-
-        elif islem == "gonder":
-            final_reply = request.form.get("final_reply")
-            try:
-                send_reply_mail(to_email=sender, subject=f"Re: {subject}", body=final_reply)
-                success_message = f"{sender} adresine yanıt başarıyla postalandı!"
-            except Exception as e:
-                error = f"E-posta gönderilirken hata oluştu: {str(e)}"
-
-    mail_items_html = ""
-    if mailler:
-        for m in mailler:
-            mail_items_html += f"""
-            <div class="user-box" style="margin-bottom: 20px; background: #ffffff !important; border-left: 4px solid #10b981; padding: 15px;">
-                <p style="margin: 4px 0;"><b>Kimden:</b> {m.get('sender_display', 'Bilinmiyor')}</p>
-                <p style="margin: 4px 0;"><b>Konu:</b> {m.get('subject', 'Konu Yok')}</p>
-                <p style="background: #f8fafc; padding: 10px; border-radius: 8px; font-size: 13px; max-height: 120px; overflow-y: auto; margin-top: 8px;">{m.get('content', '')}</p>
-                
-                <form method="post" style="margin-top: 12px; display: flex; flex-direction: column; gap: 8px;">
-                    <input type="hidden" name="islem" value="olustur">
-                    <input type="hidden" name="sender" value="{m.get('sender', '')}">
-                    <input type="hidden" name="subject" value="{m.get('subject', '')}">
-                    <input type="hidden" name="content" value="{m.get('content', '')}">
-                    
-                    <input type="text" name="user_instruction" placeholder="Yapay zekaya not bırakın (Örn: Teklifi reddet...)" 
-                           style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; box-sizing: border-box; background:#ffffff !important;">
-                    
-                    <button class="btn btn-blue" type="submit" style="padding: 8px 12px; font-size: 13px; align-self: flex-start;">🤖 KipGPT ile Yanıt Oluştur</button>
-                </form>
-            </div>
-            """
-    else:
-        mail_items_html = "<p style='color:#64748b;'>Kutuda mail bulunamadı.</p>"
-
-    # 🔄 Türkçe Karakterleri korumak için Güvenli JS Enjeksiyonlu Taslak Alanı
-    ai_preview_html = ""
-    if ai_yaniti:
-        # Satır atlamalarını JavaScript dizesine güvenli taşımak için hazırlıyoruz
-        js_safe_reply = ai_yaniti.replace('\\', '\\\\').replace('`', '\\`').replace('$', '\\$')
-        
-        ai_preview_html = f"""
-        <div class="user-box" style="margin-bottom: 25px; background: #f0fdf4 !important; border: 1px solid #bbf7d0; padding: 15px;">
-            <h4 style="margin-top:0; color:#166534; margin-bottom: 8px;">🤖 KipGPT Taslak Yanıtı</h4>
-            <p style="font-size:12px; color:#64748b; margin-bottom:8px;">Alıcı: {secilen_mail.get('sender')}</p>
+                from_text = "Bilinmeyen Gönderici"
             
-            <form method="post" style="margin-bottom: 15px;">
-                <input type="hidden" name="islem" value="gonder">
-                <input type="hidden" name="sender" value="{secilen_mail.get('sender')}">
-                <input type="hidden" name="subject" value="{secilen_mail.get('subject')}">
-                
-                <textarea id="aiDraftTextArea" name="final_reply" style="width:100%; height:150px; padding:10px; border-radius:8px; border:1px solid #cbd5e1; font-family:inherit; font-size:14px; margin-bottom:10px; box-sizing: border-box;"></textarea>
-                <button class="btn btn-green" type="submit" style="width:100%; padding:10px; font-weight:600;">🚀 Yanıtı E-Posta Olarak Gönder</button>
-            </form>
-            
-            <div style="background: #ffffff; padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1;">
-                <h5 style="margin: 0 0 8px 0; color: #334155; font-size: 13px;">🔄 Yanıtı Beğenmediniz mi? Yapay Zekaya Yeniden Düzenletin:</h5>
-                <form method="post" style="display: flex; flex-direction: column; gap: 8px;">
-                    <input type="hidden" name="islem" value="revize_et">
-                    <input type="hidden" name="sender" value="{secilen_mail.get('sender')}">
-                    <input type="hidden" name="subject" value="{secilen_mail.get('subject')}">
-                    <input type="hidden" name="content" value="{secilen_mail.get('content')}">
-                    <input type="hidden" id="aiCurrentDraftHidden" name="current_draft" value="">
-                    
-                    <input type="text" name="revize_notu" placeholder="Şu yönde yenile: (Örn: Daha resmi yaz...)" required
-                           style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; box-sizing: border-box;">
-                    <button class="btn btn-blue" type="submit" style="padding: 6px 12px; font-size: 12px; align-self: flex-start; background: #64748b !important;">Taslağı Güncelle</button>
-                </form>
-            </div>
-            
-            <script>
-                (function() {{
-                    var rawReply = `{js_safe_reply}`;
-                    document.getElementById('aiDraftTextArea').value = rawReply;
-                    document.getElementById('aiCurrentDraftHidden').value = rawReply;
-                }})();
-            </script>
-        </div>
-        """
+            import re
+            email_match = re.search(r'[\w\.-]+@[\w\.-]+', from_text)
+            sender_email = email_match.group(0) if email_match else from_text
 
-    content_html = f"""
-    <div class="layout" style="justify-content: center; overflow-y: auto; padding: 20px 15px;">
-        <div class="card" style="max-width: 700px; margin: 0 auto; width: 100%; padding: 20px; box-sizing: border-box;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h2 style="margin:0; font-size:20px;">E-Posta Asistanı</h2>
-                <a href="/"><button class="btn btn-blue" style="padding: 6px 12px; font-size: 13px;">Sohbete Dön</button></a>
-            </div>
-            
-            {"<div class='error'>" + error + "</div>" if error else ""}
-            {"<div class='error' style='background:#d1fae5 !important; color:#065f46 !important; border:1px solid #a7f3d0;'> " + success_message + "</div>" if success_message else ""}
-            
-            {ai_preview_html}
+            # 🛠️ İçerik Çözümü (Baytları Doğrudan UTF-8'e Zorlama)
+            body = ""
+            if msg.is_multipart():
+                for part in msg.walk():
+                    if part.get_content_type() == "text/plain":
+                        payload = part.get_payload(decode=True)
+                        if payload:
+                            charset = part.get_content_charset() or "utf-8"
+                            body = payload.decode(charset, errors="replace")
+                        break
+            else:
+                payload = msg.get_payload(decode=True)
+                if payload:
+                    charset = msg.get_content_charset() or "utf-8"
+                    body = payload.decode(charset, errors="replace")
 
-            <div style="margin-top: 10px;">
-                <h3 style="font-size: 15px; color: #334155; margin-bottom:8px;">Son Gelen E-Postalar</h3>
-                <hr style="border: 0; border-top: 1px solid #e2e8f0; margin-bottom: 15px;">
-                {mail_items_html}
-            </div>
-        </div>
-    </div>
-    """
-    
-    from flask import make_response
-    response = make_response(render_page(content_html))
-    response.headers["Content-Type"] = "text/html; charset=utf-8"
-    return response
+            result.append({
+                "id": i.decode(),
+                "subject": subject.strip(),
+                "sender_display": from_text.strip(),
+                "sender": sender_email.strip(),
+                "content": body.strip()[:1000]
+            })
+        except Exception as e:
+            print(f"Mail ayrıştırma hatası: {e}")
+            continue
+
+    return result
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5001))
