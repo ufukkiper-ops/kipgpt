@@ -301,8 +301,8 @@ def mail_page():
         subject = request.form.get("subject")
         content = request.form.get("content")
         user_instruction = request.form.get("user_instruction", "").strip()
-        current_draft = request.form.get("current_draft", "").strip() # Mevcut taslak metni
-        revize_notu = request.form.get("revize_notu", "").strip()     # Yeniden düzenleme notu
+        current_draft = request.form.get("current_draft", "").strip()
+        revize_notu = request.form.get("revize_notu", "").strip()
         
         if islem == "olustur":
             client = get_client()
@@ -316,19 +316,20 @@ Konu: {subject}
 İçerik: {content}
 {talimat_ekleme}
 
-Yukarıdaki maili, varsa kullanıcının özel isteğini/notunu dikkate alarak profesyonel, kibar ve çözüm odaklı şekilde Türkçe olarak yanıtla."""
+Yukarıdaki maili, kullanıcının özel isteğini dikkate alarak profesyonel, kibar ve çözüm odaklı şekilde Türkçe olarak yanıtla.
+
+⚠️ KRİTİK KURAL: Yanıtında ASLA "İşte güncellenmiş mail", "Tabii ki yazıyorum", "Merhaba" (eğer maile ait değilse) gibi hiçbir giriş, açıklama veya kapanış cümlesi kurma. Sadece ve sadece KARŞI TARAFA GÖNDERİLECEK mail metnini yaz."""
 
                     response = client.chat.completions.create(
                         model="gpt-4o-mini",
                         messages=[{"role": "user", "content": prompt}]
                     )
-                    ai_yaniti = response.choices[0].message.content
+                    ai_yaniti = response.choices[0].message.content.strip()
                     secilen_mail = {"sender": sender, "subject": subject, "content": content}
                 except Exception as e:
                     error = f"Yanıt oluşturulurken hata: {str(e)}"
                     
         elif islem == "revize_et":
-            # 🔄 MEVCUT TASLAĞI YENİDEN DÜZENLEME AŞAMASI
             client = get_client()
             if client is None:
                 error = "Sunucuda OPENAI_API_KEY ayarlı değil."
@@ -344,13 +345,15 @@ Daha Önce Hazırlanan Taslak:
 Kullanıcının Taslağı Yeniden Düzenleme İsteği:
 {revize_notu}
 
-Lütfen daha önce hazırlanan taslağı, kullanıcının yeni düzenleme isteği doğrultusunda güncelleyerek yeniden Türkçe olarak yaz."""
+Yukarıdaki eski taslağı, kullanıcının yeni düzenleme isteği doğrultusunda güncelleyerek yeniden Türkçe olarak yaz.
+
+⚠️ KRİTİK KURAL: Yanıtında ASLA "İsteğiniz üzerine düzelttim", "Şöyle değiştirdim" gibi hiçbir açıklama cümlesi yer almasın. Sadece ve sadece KARŞI TARAFA GÖNDERİLECEK olan nihai mail metnini döndür."""
 
                     response = client.chat.completions.create(
                         model="gpt-4o-mini",
                         messages=[{"role": "user", "content": prompt}]
                     )
-                    ai_yaniti = response.choices[0].message.content
+                    ai_yaniti = response.choices[0].message.content.strip()
                     secilen_mail = {"sender": sender, "subject": subject, "content": content}
                 except Exception as e:
                     error = f"Taslak yeniden düzenlenirken hata: {str(e)}"
@@ -388,12 +391,14 @@ Lütfen daha önce hazırlanan taslağı, kullanıcının yeni düzenleme isteğ
     else:
         mail_items_html = "<p style='color:#64748b;'>Kutuda mail bulunamadı.</p>"
 
-    # 📝 Yapay zeka yanıt taslağı ekranı ve interaktif REVİZE ETME modülü
+    # 🔄 Türkçe Karakterleri korumak için Güvenli JS Enjeksiyonlu Taslak Alanı
     ai_preview_html = ""
     if ai_yaniti:
+        # Satır atlamalarını JavaScript dizesine güvenli taşımak için hazırlıyoruz
+        js_safe_reply = ai_yaniti.replace('\\', '\\\\').replace('`', '\\`').replace('$', '\\$')
+        
         ai_preview_html = f"""
         <div class="user-box" style="margin-bottom: 25px; background: #f0fdf4 !important; border: 1px solid #bbf7d0; padding: 15px;">
-            <meta charset="UTF-8">
             <h4 style="margin-top:0; color:#166534; margin-bottom: 8px;">🤖 KipGPT Taslak Yanıtı</h4>
             <p style="font-size:12px; color:#64748b; margin-bottom:8px;">Alıcı: {secilen_mail.get('sender')}</p>
             
@@ -401,7 +406,8 @@ Lütfen daha önce hazırlanan taslağı, kullanıcının yeni düzenleme isteğ
                 <input type="hidden" name="islem" value="gonder">
                 <input type="hidden" name="sender" value="{secilen_mail.get('sender')}">
                 <input type="hidden" name="subject" value="{secilen_mail.get('subject')}">
-                <textarea name="final_reply" style="width:100%; height:150px; padding:10px; border-radius:8px; border:1px solid #cbd5e1; font-family:inherit; font-size:14px; margin-bottom:10px; box-sizing: border-box;">{ai_yaniti}</textarea>
+                
+                <textarea id="aiDraftTextArea" name="final_reply" style="width:100%; height:150px; padding:10px; border-radius:8px; border:1px solid #cbd5e1; font-family:inherit; font-size:14px; margin-bottom:10px; box-sizing: border-box;"></textarea>
                 <button class="btn btn-green" type="submit" style="width:100%; padding:10px; font-weight:600;">🚀 Yanıtı E-Posta Olarak Gönder</button>
             </form>
             
@@ -412,19 +418,26 @@ Lütfen daha önce hazırlanan taslağı, kullanıcının yeni düzenleme isteğ
                     <input type="hidden" name="sender" value="{secilen_mail.get('sender')}">
                     <input type="hidden" name="subject" value="{secilen_mail.get('subject')}">
                     <input type="hidden" name="content" value="{secilen_mail.get('content')}">
-                    <input type="hidden" name="current_draft" value="{ai_yaniti}">
+                    <input type="hidden" id="aiCurrentDraftHidden" name="current_draft" value="">
                     
-                    <input type="text" name="revize_notu" placeholder="Şu yönde yenile: (Örn: Daha kısa yaz, toplantı saatini 14:00 yap...)" required
+                    <input type="text" name="revize_notu" placeholder="Şu yönde yenile: (Örn: Daha resmi yaz...)" required
                            style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; box-sizing: border-box;">
                     <button class="btn btn-blue" type="submit" style="padding: 6px 12px; font-size: 12px; align-self: flex-start; background: #64748b !important;">Taslağı Güncelle</button>
                 </form>
             </div>
+            
+            <script>
+                (function() {{
+                    var rawReply = `{js_safe_reply}`;
+                    document.getElementById('aiDraftTextArea').value = rawReply;
+                    document.getElementById('aiCurrentDraftHidden').value = rawReply;
+                }})();
+            </script>
         </div>
         """
 
     content_html = f"""
     <div class="layout" style="justify-content: center; overflow-y: auto; padding: 20px 15px;">
-        <meta charset="UTF-8">
         <div class="card" style="max-width: 700px; margin: 0 auto; width: 100%; padding: 20px; box-sizing: border-box;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h2 style="margin:0; font-size:20px;">E-Posta Asistanı</h2>
@@ -444,131 +457,11 @@ Lütfen daha önce hazırlanan taslağı, kullanıcının yeni düzenleme isteğ
         </div>
     </div>
     """
-    return render_page(content_html)
-
-@app.route("/", methods=["GET", "POST"])
-def index():
-    if "user" not in session: return redirect(url_for("login"))
-    username = session["user"]
-    data = load_data()
-
-    if username not in data or not isinstance(data[username], dict):
-        data[username] = {"active_chat": "chat1", "chats": {"chat1": []}}
-
-    active_chat = data[username].get("active_chat", "chat1")
-    chats = data[username].setdefault("chats", {"chat1": []})
-    gecmis = chats.setdefault(active_chat, [])
-
-    if request.method == "POST":
-        action = request.form.get("action", "text")
-        client = get_client()
-
-        if client is None:
-            return jsonify({"status": "error", "error": "Sunucuda OPENAI_API_KEY ayarlı değil."}), 400
-
-        if action == "text":
-            soru = request.form.get("soru", "").strip()
-            if soru != "":
-                gecmis.append({"role": "user", "content": soru})
-                try:
-                    response = client.chat.completions.create(
-                        model="gpt-4o-mini",
-                        messages=[{"role": m["role"], "content": m["content"]} for m in gecmis]
-                    )
-                    cevap = response.choices[0].message.content
-                except Exception as e:
-                    cevap = f"AI hatası: {str(e)}"
-
-                gecmis.append({"role": "assistant", "content": cevap})
-                data[username]["chats"][active_chat] = gecmis
-                save_data(data)
-                return jsonify({"status": "success", "answer": cevap})
-
-        elif action == "image":
-            uploaded_file = request.files.get("image")
-            prompt = request.form.get("image_prompt", "").strip() or "Bu resmi detaylı yorumla."
-
-            if uploaded_file and uploaded_file.filename != "":
-                try:
-                    image_data_url = image_file_to_data_url(uploaded_file)
-                    gecmis.append({
-                        "role": "user",
-                        "content": f"[RESİM] {prompt}",
-                        "image": image_data_url
-                    })
-                    response = client.chat.completions.create(
-                        model="gpt-4o-mini",
-                        messages=[
-                            {
-                                "role": "user",
-                                "content": [
-                                    {"type": "text", "text": prompt},
-                                    {"type": "image_url", "image_url": {"url": image_data_url}}
-                                ]
-                            }
-                        ]
-                    )
-                    cevap = response.choices[0].message.content
-                    gecmis.append({"role": "assistant", "content": cevap})
-                    data[username]["chats"][active_chat] = gecmis
-                    save_data(data)
-                except Exception as e:
-                    print(f"Hata: {e}")
-                
-                return redirect(url_for("index"))
-
-    chat_list_html = "".join([
-        f'<a class="chat-item {"active" if cid == active_chat else ""}" href="/switch/{cid}">{cid}</a>'
-        for cid in chats.keys()
-    ])
-
-    messages_html = ""
-    for mesaj in gecmis:
-        role = mesaj.get("role", "assistant")
-        content = mesaj.get("content", "")
-        css = "msg msg-user" if role == "user" else "msg msg-bot"
-        if role == "user":
-            messages_html += f'<div class="{css}"><b>Sen:</b><br>{content}</div>'
-        else:
-            extra_image = f'<br><img src="{mesaj["image"]}">' if "image" in mesaj and mesaj["image"] else ""
-            messages_html += f'<div class="{css}"><b class="bot-text">AI:</b><br><span class="bot-text">{content}</span>{extra_image}</div>'
-
-    content = f"""
-    <div class="layout">
-        <div class="sidebar">
-            <h2>AI Asistan</h2>
-            <div class="user-box"><b>Kullanıcı:</b> {username}</div>
-            <a class="new-chat" href="/new_chat">+ Yeni Sohbet</a>
-            <div class="chat-list">{chat_list_html}</div>
-        </div>
-        <div class="main">
-            <div class="topbar">
-                <div><b>Aktif Sohbet:</b> {active_chat}</div>
-                <div class="right-buttons">
-                    <a href="/mail"><button class="btn btn-green">📧 Mailler</button></a>
-                    <form method="post" action="/clear_chat" style="margin:0;">
-                        <button class="btn btn-red" type="submit">Temizle</button>
-                    </form>
-                    <a href="/logout"><button class="btn btn-blue">Çıkış</button></a>
-                </div>
-            </div>
-            <div class="messages">{messages_html}</div>
-            <div class="bottom">
-                <form class="input-container" onsubmit="sendTextMessage(event)">
-                    <input id="chat-input" type="text" placeholder="Mesajınızı buraya yazın..." autofocus>
-                    <button class="btn btn-blue" type="submit">Gönder</button>
-                </form>
-                <form class="image-bar" method="post" enctype="multipart/form-data">
-                    <input type="hidden" name="action" value="image">
-                    <input type="file" name="image" accept="image/*" required style="color:#0f172a; font-size:12px;">
-                    <input type="text" name="image_prompt" placeholder="Resim sorusu..." style="background:#ffffff; border:1px solid #cbd5e1; padding:5px; color:#0f172a; border-radius:5px;">
-                    <button class="btn btn-green" type="submit" style="padding:5px 10px; font-size:12px;">Resmi Yorumlat</button>
-                </form>
-            </div>
-        </div>
-    </div>
-    """
-    return render_page(content)
+    
+    from flask import make_response
+    response = make_response(render_page(content_html))
+    response.headers["Content-Type"] = "text/html; charset=utf-8"
+    return response
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5001))
