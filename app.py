@@ -341,6 +341,26 @@ body{
 }
 </style>
 <script>
+function appendMessage(role, text){
+
+    const messages = document.querySelector(".messages");
+
+    const div = document.createElement("div");
+
+    div.className =
+        role==="user"
+        ? "msg msg-user"
+        : "msg msg-bot";
+
+    div.innerHTML =
+        `<b>${role==="user" ? "Sen" : "KipGPT"}:</b><br>${text}`;
+
+    messages.appendChild(div);
+
+    messages.scrollTop = messages.scrollHeight;
+
+    return div;
+}
 async function sendTextMessage(event) {
     event.preventDefault();
 
@@ -352,17 +372,14 @@ async function sendTextMessage(event) {
     const messages = document.querySelector(".messages");
 
     // Kullanıcının mesajını hemen ekrana yaz
-    messages.innerHTML += `
-        <div class="msg msg-user">
-            <b>Sen:</b><br>${message}
-        </div>
-    `;
+    appendMessage("user", message);
 
     // KipGPT düşünüyor...
-    const loading = document.createElement("div");
-    loading.className = "msg msg-bot";
-    loading.innerHTML = "<b>KipGPT:</b><br><i>Düşünüyor...</i>";
-    messages.appendChild(loading);
+    const loading =
+    appendMessage(
+        "assistant",
+        "<i>KipGPT düşünüyor...</i>"
+    );
 
     messages.scrollTop = messages.scrollHeight;
 
@@ -383,9 +400,8 @@ async function sendTextMessage(event) {
 
         if (data.status === "success") {
 
-            loading.innerHTML = `
-                <b>KipGPT:</b><br>${data.answer}
-            `;
+            loading.innerHTML =
+                 `<b>KipGPT:</b><br>${data.answer.replace(/\n/g,"<br>")}`;
 
         } else {
 
