@@ -401,7 +401,7 @@ async function sendTextMessage(event) {
         if (data.status === "success") {
 
             loading.innerHTML =
-                 `<b>KipGPT:</b><br>${data.answer.replace(/\n/g,"<br>")}
+               `<b>KipGPT:</b><br>${data.answer}`;
             `;
 
         } else {
