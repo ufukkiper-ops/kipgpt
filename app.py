@@ -854,20 +854,8 @@ def index():
         content = mesaj.get("content", "")
         css = "msg msg-user" if role == "user" else "msg msg-bot"
         if role == "user":
-
-         extra_image = ""
-
-    if "image" in mesaj and mesaj["image"]:
-        extra_image = f'<br><img src="{mesaj["image"]}">'
-
-        messages_html += f'''
-        <div class="{css}">
-            <b>Sen:</b><br>
-            {content}
-            {extra_image}
-        </div>
-    '''
-    else:
+            messages_html += f'<div class="{css}"><b>Sen:</b><br>{content}</div>'
+        else:
             extra_image = f'<br><img src="{mesaj["image"]}">' if "image" in mesaj and mesaj["image"] else ""
             messages_html += f'<div class="{css}"><b class="bot-text">KipGPT:</b><br><span class="bot-text">{content}</span>{extra_image}</div>'
     content = f"""
