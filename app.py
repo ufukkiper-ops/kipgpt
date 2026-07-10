@@ -857,7 +857,8 @@ def index():
             messages_html += f'<div class="{css}"><b>Sen:</b><br>{content}</div>'
         else:
             extra_image = f'<br><img src="{mesaj["image"]}">' if "image" in mesaj and mesaj["image"] else ""
-            messages_html += f'<div class="{css}"><b class="bot-text">KipGPT:</b><br><span class="bot-text">{content}</span>{extra_image}</div>'
+            messages_html += f'<div class="{css}"><b class="bot-text">AI:</b><br><span class="bot-text">{content}</span>{extra_image}</div>'
+
     content = f"""
     <div class="layout">
         <div class="sidebar">
