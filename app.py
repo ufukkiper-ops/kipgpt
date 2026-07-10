@@ -448,14 +448,71 @@ def register():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
+
+    error = ""
+
     if request.method == "POST":
+
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "").strip()
+
         users = load_users()
-        if any(u["username"] == username and u["password"] == password for u in users):
-            session["user"] = username
-            return redirect(url_for("mail_page"))
-    return render_page('<div class="card"><h2>Giriş</h2><form method="post"><input name="username" placeholder="Kullanıcı"><input name="password" type="password" placeholder="Şifre"><button type="submit">Giriş</button></form></div>')
+
+        for user in users:
+            if user["username"] == username and user["password"] == password:
+                session["user"] = username
+                return redirect(url_for("index"))
+
+        error = "Kullanıcı adı veya şifre hatalı."
+
+    content = f"""
+<div class="card">
+
+    <h2>Giriş Yap</h2>
+
+    {"<div class='error'>" + error + "</div>" if error else ""}
+
+    <form method="post">
+
+        <input
+            name="username"
+            placeholder="Kullanıcı adı"
+            required>
+
+        <input
+            name="password"
+            type="password"
+            placeholder="Şifre"
+            required>
+
+        <button
+            class="btn btn-blue"
+            type="submit"
+            style="width:100%;">
+
+            Giriş Yap
+
+        </button>
+
+    </form>
+
+    <p style="margin-top:20px;text-align:center;">
+
+        Hesabın yok mu?
+
+        <a href="/register"
+           style="color:#38bdf8;font-weight:bold;">
+
+            Kayıt Ol
+
+        </a>
+
+    </p>
+
+</div>
+"""
+
+    return render_page(content)
       
 @app.route("/logout")
 def logout():
