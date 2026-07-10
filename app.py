@@ -391,24 +391,24 @@ async function sendTextMessage(event) {
 
     try {
 
-        const response = await fetch("/", {
-            method: "POST",
-            body: formData
-        });
+    const response = await fetch("/", {
+        method: "POST",
+        body: formData
+    });
 
-        const data = await response.json();
+    const data = await response.json();
 
-        if (data.status === "success") {
+    if (data.status === "success") {
 
-            loading.innerHTML = `<b>KipGPT:</b><br>${data.answer}`;
+        loading.innerHTML = "<b>KipGPT:</b><br>" + data.answer;
 
-        } else {
+    } else {
 
-            loading.innerHTML = `
-                <b>Hata:</b><br>${data.error}
-            `;
+        loading.innerHTML = "<b>Hata:</b><br>" + data.error;
 
-        }
+    }
+
+
 
     } catch (e) {
 
