@@ -1,175 +1,93 @@
-from mail import get_last_mails, analyze_mail, send_reply_mail
 from flask import Flask, request, render_template_string, redirect, url_for, session, jsonify
 import os
 import json
 import base64
+import re
 from openai import OpenAI
-
+from mail import get_last_mails, send_reply_mail 
+def save_users(users):
+    """Kullanıcı verilerini JSON dosyasına kaydeder."""
+    with open(USERS_FILE, "w", encoding="utf-8") as f:
+        json.dump(users, f, ensure_ascii=False, indent=2)
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "gizli123")
 
+# --- DOSYA İŞLEMLERİ ---
 USERS_FILE = "users.json"
 DATA_FILE = "data.json"
 
 def ensure_files():
     if not os.path.exists(USERS_FILE):
-        with open(USERS_FILE, "w", encoding="utf-8") as f:
-            json.dump([], f, ensure_ascii=False, indent=2)
+        with open(USERS_FILE, "w", encoding="utf-8") as f: json.dump([], f, ensure_ascii=False, indent=2)
     if not os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "w", encoding="utf-8") as f:
-            json.dump({}, f, ensure_ascii=False, indent=2)
+        with open(DATA_FILE, "w", encoding="utf-8") as f: json.dump({}, f, ensure_ascii=False, indent=2)
+
+ensure_files()
 
 def load_users():
-    ensure_files()
     try:
-        with open(USERS_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except:
-        return []
-
-def save_users(users):
-    with open(USERS_FILE, "w", encoding="utf-8") as f:
-        json.dump(users, f, ensure_ascii=False, indent=2)
+        with open(USERS_FILE, "r", encoding="utf-8") as f: return json.load(f)
+    except: return []
 
 def load_data():
-    ensure_files()
     try:
-        with open(DATA_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except:
-        return {}
+        with open(DATA_FILE, "r", encoding="utf-8") as f: return json.load(f)
+    except: return {}
 
 def save_data(data):
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    with open(DATA_FILE, "w", encoding="utf-8") as f: json.dump(data, f, ensure_ascii=False, indent=2)
 
 def get_client():
     api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        return None
-    return OpenAI(api_key=api_key)
-
-def image_file_to_data_url(file_storage):
-    mime_type = file_storage.mimetype or "image/jpeg"
-    raw = file_storage.read()
-    encoded = base64.b64encode(raw).decode("utf-8")
-    return f"data:{mime_type};base64,{encoded}"
-
+    return OpenAI(api_key=api_key) if api_key else None
 BASE_HTML = """
 <!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="color-scheme" content="light">
-    
-    <link rel="icon" type="image/x-icon" href="/static/favicon.ico?v=3">
-    <link rel="shortcut icon" type="image/x-icon" href="/static/favicon.ico?v=3">
-    <link rel="apple-touch-icon" sizes="192x192" href="/static/icon.png?v=3">
-    <meta name="mobile-web-app-capable" content="yes">
-    
-    <title>KipGPT</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            color-scheme: light !important;
-            --background-color: #ffffff !important;
-            --text-color: #0f172a !important;
-        }
-        * { box-sizing: border-box; font-family: 'Inter', sans-serif; }
-        html, body {
-            margin: 0; padding: 0;
-            background-color: #ffffff !important;
-            color: #0f172a !important;
-            display: flex; height: 100vh; overflow: hidden;
-        }
-        a { text-decoration: none; color: inherit; }
-        .layout { display: flex; width: 100%; height: 100%; background-color: #ffffff !important; }
-        .sidebar {
-            width: 280px; background: #f8fafc !important; padding: 20px;
-            border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 15px;
-        }
-        .sidebar h2 { margin: 0; font-size: 20px; font-weight: 600; color: #0284c7 !important; }
-        .user-box { padding: 12px; background: #f1f5f9 !important; border-radius: 12px; font-size: 14px; border: 1px solid #e2e8f0; color: #334155 !important; }
-        .new-chat { display: block; width: 100%; background: linear-gradient(135deg, #38bdf8, #0284c7) !important; color: white !important; text-align: center; padding: 12px; border-radius: 12px; font-weight: 600; transition: all 0.2s; }
-        .new-chat:hover { opacity: 0.9; transform: translateY(-1px); }
-        .chat-list { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; flex: 1; }
-        .chat-item { display: block; padding: 12px; border-radius: 10px; background: #f1f5f9 !important; font-size: 14px; border: 1px solid transparent; transition: all 0.2s; color: #334155 !important; }
-        .chat-item:hover { background: #e2e8f0 !important; }
-        .chat-item.active { background: #3b82f6 !important; border-color: #2563eb !important; color: white !important; }
-        .main { flex: 1; display: flex; flex-direction: column; background-color: #ffffff !important; }
-        .topbar { background: #f8fafc !important; padding: 15px 25px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; color: #334155 !important; }
-        .right-buttons { display: flex; gap: 10px; }
-        .btn { border: none; border-radius: 10px; padding: 10px 16px; cursor: pointer; font-weight: 500; transition: opacity 0.2s; }
-        .btn:hover { opacity: 0.9; }
-        .btn-blue { background: #38bdf8 !important; color: black !important; }
-        .btn-red { background: #ef4444 !important; color: white !important; }
-        .btn-green { background: #10b981 !important; color: white !important; }
-        .messages { flex: 1; padding: 25px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; background-color: #ffffff !important; }
-        .msg { max-width: 75%; padding: 14px 18px; border-radius: 16px; line-height: 1.6; white-space: pre-wrap; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
-        .msg-user { background: #0284c7 !important; color: white !important; align-self: flex-end; border-bottom-right-radius: 4px; }
-        .msg-user * { color: white !important; }
-        .msg-bot { background-color: #f1f5f9 !important; color: #0f172a !important; align-self: flex-start; border-bottom-left-radius: 4px; border: 1px solid #e2e8f0; }
-        .msg-bot, .msg-bot *, .bot-text, .messages .msg-bot * { color: #0f172a !important; }
-        .msg img { max-width: 100%; border-radius: 10px; margin-top: 10px; }
-        .bottom { padding: 20px; background: #f8fafc !important; border-top: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 10px; }
-        .input-container { display: flex; background: #ffffff !important; border-radius: 14px; padding: 6px; align-items: center; border: 1px solid #cbd5e1; }
-        .input-container input[type="text"] { flex: 1; background: transparent !important; border: none; padding: 10px 15px; color: #0f172a !important; font-size: 15px; outline: none; }
-        .card { max-width: 400px; margin: 100px auto; background: #ffffff !important; padding: 30px; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); color: #0f172a !important; }
-        .card input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #cbd5e1; background: #ffffff !important; border-radius: 10px; color: #0f172a !important; }
-        .error { color: #7f1d1d !important; background: #fca5a5 !important; padding: 12px; border-radius: 10px; margin-bottom: 15px; font-size: 14px; }
-        .image-bar { display: flex; gap: 10px; align-items: center; font-size: 13px; background: #f1f5f9 !important; padding: 8px 12px; border-radius: 10px; color: #334155 !important; }
-        @media (max-width: 768px) { .sidebar { display: none; } }
-    </style>
-</head>
-<body>
-{{ content|safe }}
+<html lang="tr"><head><meta charset="UTF-8"><title>KipGPT</title>
+<style>
+    body { font-family: 'Inter', sans-serif; margin: 0; background: #fff; }
+    .layout { display: flex; width: 100%; height: 100vh; }
+    .card { max-width: 700px; margin: 40px auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 16px; }
+    .btn { border: none; border-radius: 10px; padding: 10px 16px; cursor: pointer; }
+    .btn-blue { background: #38bdf8; }
+    .btn-green { background: #10b981; color: white; }
+    .error { color: #7f1d1d; background: #fca5a5; padding: 10px; border-radius: 10px; margin-bottom: 10px; }
+</style>
 <script>
-    const msgDiv = document.querySelector('.messages');
-    if(msgDiv) msgDiv.scrollTop = msgDiv.scrollHeight;
+async function sendTextMessage(event) {
+    event.preventDefault();
 
-    async function sendTextMessage(event) {
-        event.preventDefault();
-        const input = document.getElementById('chat-input');
-        const msg = input.value.trim();
-        if(!msg) return;
+    const input = document.getElementById("chat-input");
+    const message = input.value.trim();
 
-        input.value = '';
-        appendMessage('user', msg);
+    if (!message) return;
 
-        try {
-            const formData = new FormData();
-            formData.append('action', 'text');
-            formData.append('soru', msg);
+    const formData = new FormData();
+    formData.append("action", "text");
+    formData.append("soru", message);
 
-            const response = await fetch('/', { method: 'POST', body: formData });
-            const data = await response.json();
+    try {
+        const response = await fetch("/", {
+            method: "POST",
+            body: formData
+        });
 
-            if(data.status === 'success') {
-                appendMessage('bot', data.answer);
-            } else {
-                appendMessage('bot', 'Bir hata oluştu: ' + data.error);
-            }
-        } catch(e) {
-            appendMessage('bot', 'Bağlantı hatası gerçekleşti.');
-        }
-    }
+        const data = await response.json();
 
-    function appendMessage(role, text) {
-        const messagesContainer = document.querySelector('.messages');
-        const msgHtml = document.createElement('div');
-        msgHtml.className = role === 'user' ? 'msg msg-user' : 'msg msg-bot';
-        if(role === 'user') {
-            msgHtml.innerHTML = '<b>Sen:</b><br>' + text;
+        if (data.status === "success") {
+            location.reload();
         } else {
-            msgHtml.innerHTML = '<b class="bot-text">AI:</b><br><span class="bot-text">' + text + '</span>';
+            alert(data.error || "Bir hata oluştu.");
         }
-        messagesContainer.appendChild(msgHtml);
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+    } catch (e) {
+        alert("Sunucuya bağlanılamadı.");
+        console.error(e);
     }
+
+    input.value = "";
+}
 </script>
-</body>
-</html>
+</head><body>{{ content|safe }}</body></html>
 """
 
 def render_page(content):
@@ -193,10 +111,10 @@ def register():
                 users.append({"username": username, "password": password})
                 save_users(users)
                 return redirect(url_for("login"))
-    content = f"""
+    # render registration form
+    content = '''
     <div class="card">
         <h2>Kayıt Ol</h2>
-        {"<div class='error'>" + error + "</div>" if error else ""}
         <form method="post">
             <input name="username" placeholder="Kullanıcı adı">
             <input name="password" type="password" placeholder="Şifre">
@@ -204,40 +122,20 @@ def register():
         </form>
         <p style="font-size:14px; text-align:center;">Zaten hesabın var mı? <a href="/login" style="color:#0284c7;">Giriş Yap</a></p>
     </div>
-    """
+    '''
     return render_page(content)
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    error = ""
     if request.method == "POST":
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "").strip()
         users = load_users()
-        found = False
-        for user in users:
-            if user["username"] == username and user["password"] == password:
-                session["user"] = username
-                found = True
-                break
-        if found:
-            return redirect(url_for("index"))
-        else:
-            error = "Kullanıcı adı veya şifre hatalı."
-    content = f"""
-    <div class="card">
-        <h2>Giriş Yap</h2>
-        {"<div class='error'>" + error + "</div>" if error else ""}
-        <form method="post">
-            <input name="username" placeholder="Kullanıcı adı">
-            <input name="password" type="password" placeholder="Şifre">
-            <button class="btn btn-blue" type="submit" style="width:100%;">Giriş Yap</button>
-        </form>
-        <p style="font-size:14px; text-align:center;">Hesabın yok mu? <a href="/register" style="color:#0284c7;">Kayıt Ol</a></p>
-    </div>
-    """
-    return render_page(content)
-
+        if any(u["username"] == username and u["password"] == password for u in users):
+            session["user"] = username
+            return redirect(url_for("mail_page"))
+    return render_page('<div class="card"><h2>Giriş</h2><form method="post"><input name="username" placeholder="Kullanıcı"><input name="password" type="password" placeholder="Şifre"><button type="submit">Giriş</button></form></div>')
+      
 @app.route("/logout")
 def logout():
     session.pop("user", None)
@@ -281,8 +179,12 @@ def clear_chat():
 
 @app.route("/mail", methods=["GET", "POST"])
 def mail_page():
-    if "user" not in session: 
-        return redirect(url_for("login"))
+    if "user" not in session: return redirect(url_for("login"))
+    error = "" 
+    success_message = ""
+    ai_yaniti = ""
+    secilen_mail = {}
+    
 
     error = ""
     success_message = ""
@@ -452,6 +354,12 @@ Lütfen daha önce hazırlanan taslağı, kullanıcının yeni düzenleme isteğ
     return render_page(content_html)
 
 @app.route("/", methods=["GET", "POST"])
+def image_file_to_data_url(file_storage):
+    """Gelen resmi base64 formatına çeviren yardımcı fonksiyon."""
+    mime_type = file_storage.mimetype or "image/jpeg"
+    raw = file_storage.read()
+    encoded = base64.b64encode(raw).decode("utf-8")
+    return f"data:{mime_type};base64,{encoded}"
 def index():
     if "user" not in session: return redirect(url_for("login"))
     username = session["user"]
@@ -561,16 +469,35 @@ def index():
             <div class="messages">{messages_html}</div>
 
             <div class="bottom">
-                <form class="input-container" method="post" enctype="multipart/form-data" style="display: flex; align-items: center; gap: 8px;">
-                    
-                    <label for="file-input" style="cursor: pointer; font-size: 28px; color: #3b82f6; font-weight: bold; padding: 0 5px;">+</label>
-                    <input id="file-input" type="file" name="image" accept="image/*, application/pdf" style="display: none;">
-                    
-                    <input id="chat-input" type="text" name="message" placeholder="Mesajınızı veya sorunuzu yazın..." style="flex-grow: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 5px;" autofocus>
-                    
-                    <button class="btn btn-blue" type="submit">Gönder</button>
-                </form>
-            </div>
+    <form
+        class="input-container"
+        onsubmit="sendTextMessage(event)"
+        enctype="multipart/form-data">
+
+        <label for="file-input"
+               style="cursor:pointer;font-size:28px;color:#3b82f6;font-weight:bold;padding:0 5px;">+</label>
+
+        <input id="file-input"
+               type="file"
+               name="image"
+               accept="image/*,application/pdf"
+               style="display:none;">
+
+        <input type="hidden"
+               name="action"
+               value="text">
+
+        <input id="chat-input"
+               type="text"
+               name="soru"
+               placeholder="Mesajınızı yazın..."
+               autocomplete="off"
+               autofocus>
+
+        <button class="btn btn-blue" type="submit">Gönder</button>
+
+    </form>
+</div>
         </div>
     </div>
     """
