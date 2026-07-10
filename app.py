@@ -44,13 +44,258 @@ BASE_HTML = """
 <!DOCTYPE html>
 <html lang="tr"><head><meta charset="UTF-8"><title>KipGPT</title>
 <style>
-    body { font-family: 'Inter', sans-serif; margin: 0; background: #fff; }
-    .layout { display: flex; width: 100%; height: 100vh; }
-    .card { max-width: 700px; margin: 40px auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 16px; }
-    .btn { border: none; border-radius: 10px; padding: 10px 16px; cursor: pointer; }
-    .btn-blue { background: #38bdf8; }
-    .btn-green { background: #10b981; color: white; }
-    .error { color: #7f1d1d; background: #fca5a5; padding: 10px; border-radius: 10px; margin-bottom: 10px; }
+    *{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Inter,Arial,sans-serif;
+}
+
+html,body{
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    background:#0f172a;
+    color:#f8fafc;
+}
+
+a{
+    color:inherit;
+    text-decoration:none;
+}
+
+body{
+    display:flex;
+}
+
+.layout{
+    display:flex;
+    width:100%;
+    height:100vh;
+}
+
+/* ==========================
+   SOL MENÜ
+========================== */
+
+.sidebar{
+    width:280px;
+    background:#020617;
+    border-right:1px solid #1e293b;
+    display:flex;
+    flex-direction:column;
+    padding:20px;
+}
+
+.sidebar h2{
+    color:#38bdf8;
+    font-size:24px;
+    margin-bottom:20px;
+}
+
+.user-box{
+    background:#111827;
+    border:1px solid #1f2937;
+    border-radius:12px;
+    padding:12px;
+    margin-bottom:15px;
+    color:#cbd5e1;
+}
+
+.new-chat{
+    display:block;
+    width:100%;
+    text-align:center;
+    background:#2563eb;
+    color:white;
+    padding:12px;
+    border-radius:12px;
+    font-weight:600;
+    margin-bottom:20px;
+    transition:.2s;
+}
+
+.new-chat:hover{
+    background:#1d4ed8;
+}
+
+.chat-list{
+    flex:1;
+    overflow-y:auto;
+}
+
+.chat-item{
+    display:block;
+    padding:12px;
+    margin-bottom:8px;
+    border-radius:10px;
+    color:#cbd5e1;
+    transition:.2s;
+}
+
+.chat-item:hover{
+    background:#1e293b;
+}
+
+.chat-item.active{
+    background:#2563eb;
+    color:white;
+}
+
+/* ==========================
+   SAĞ TARAF
+========================== */
+
+.main{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    background:#0f172a;
+}
+
+.topbar{
+    height:70px;
+    border-bottom:1px solid #1e293b;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:0 25px;
+    background:#020617;
+}
+
+.right-buttons{
+    display:flex;
+    gap:10px;
+}
+
+.btn{
+    border:none;
+    cursor:pointer;
+    padding:10px 18px;
+    border-radius:10px;
+    font-weight:600;
+    transition:.2s;
+}
+
+.btn:hover{
+    transform:translateY(-1px);
+}
+
+.btn-blue{
+    background:#2563eb;
+    color:white;
+}
+
+.btn-green{
+    background:#10b981;
+    color:white;
+}
+
+.btn-red{
+    background:#ef4444;
+    color:white;
+}
+/* ==========================
+   MESAJLAR
+========================== */
+
+.messages{
+    flex:1;
+    overflow-y:auto;
+    padding:25px;
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+    scroll-behavior:smooth;
+}
+
+.msg{
+    max-width:75%;
+    padding:14px 18px;
+    border-radius:18px;
+    line-height:1.6;
+    word-break:break-word;
+    font-size:15px;
+    box-shadow:0 3px 10px rgba(0,0,0,.15);
+}
+
+.msg-user{
+    align-self:flex-end;
+    background:#2563eb;
+    color:white;
+    border-bottom-right-radius:6px;
+}
+
+.msg-bot{
+    align-self:flex-start;
+    background:#1e293b;
+    color:#f8fafc;
+    border-bottom-left-radius:6px;
+}
+
+.bot-text{
+    color:#f8fafc;
+}
+
+.msg img{
+    margin-top:10px;
+    max-width:320px;
+    border-radius:12px;
+    display:block;
+}
+
+/* ==========================
+   ALT YAZMA ALANI
+========================== */
+
+.bottom{
+    padding:18px;
+    border-top:1px solid #1e293b;
+    background:#020617;
+}
+
+.input-container{
+    display:flex;
+    align-items:center;
+    gap:12px;
+}
+
+.input-container input[type="text"]{
+    flex:1;
+    height:52px;
+    border:none;
+    outline:none;
+    border-radius:14px;
+    background:#1e293b;
+    color:white;
+    padding:0 18px;
+    font-size:15px;
+}
+
+.input-container input[type="text"]::placeholder{
+    color:#94a3b8;
+}
+
+.input-container label{
+    width:50px;
+    height:50px;
+    border-radius:50%;
+    background:#1e293b;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    font-size:28px;
+    transition:.2s;
+}
+
+.input-container label:hover{
+    background:#334155;
+}
+
+.input-container button{
+    height:52px;
+    padding:0 22px;
+}
 </style>
 <script>
 async function sendTextMessage(event) {
