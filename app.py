@@ -427,44 +427,100 @@ def index():
                 save_data(data)
                 return jsonify({"status": "success", "answer": cevap})
 
-        elif action == "image":
-            uploaded_file = request.files.get("image")
-            prompt = request.form.get("image_prompt", "").strip() or "Bu resmi detaylı yorumla."
+            elif action == "image":
+             uploaded_file = request.files.get("image")
+            prompt = request.form.get("image_prompt", "").strip() or "Bu dosyayı analiz et."
 
             if uploaded_file and uploaded_file.filename != "":
+
                 try:
-                    image_data_url = image_file_to_data_url(uploaded_file)
-                    gecmis.append({
-                        "role": "user",
-                        "content": f"[RESİM] {prompt}",
-                        "image": image_data_url
-                    })
-                    response = client.chat.completions.create(
-                        model="gpt-4o-mini",
-                        messages=[
-                            {
-                                "role": "user",
-                                "content": [
-                                    {"type": "text", "text": prompt},
-                                    {"type": "image_url", "image_url": {"url": image_data_url}}
-                                ]
-                            }
-                        ]
-                    )
-                    cevap = response.choices[0].message.content
-                    gecmis.append({"role": "assistant", "content": cevap})
+
+                    # ---------------- PDF ----------------
+                    if uploaded_file.mimetype == "application/pdf":
+
+                        pdf_text = pdf_to_text(uploaded_file)
+
+                        if not pdf_text.strip():
+                            return jsonify({
+                                "status": "error",
+                                "error": "PDF içerisinden metin okunamadı."
+                            })
+
+                        response = client.chat.completions.create(
+                            model="gpt-4o-mini",
+                            messages=[
+                                {
+                                    "role": "user",
+                                    "content":
+                                        f"{prompt}\n\nPDF İçeriği:\n\n{pdf_text}"
+                                }
+                            ]
+                        )
+
+                        cevap = response.choices[0].message.content
+
+                        gecmis.append({
+                            "role": "user",
+                            "content": f"[PDF] {uploaded_file.filename}"
+                        })
+
+                        gecmis.append({
+                            "role": "assistant",
+                            "content": cevap
+                        })
+
+                    # ---------------- RESİM ----------------
+                    else:
+
+                        image_data_url = image_file_to_data_url(uploaded_file)
+
+                        response = client.chat.completions.create(
+                            model="gpt-4o-mini",
+                            messages=[
+                                {
+                                    "role": "user",
+                                    "content": [
+                                        {
+                                            "type": "text",
+                                            "text": prompt
+                                        },
+                                        {
+                                            "type": "image_url",
+                                            "image_url": {
+                                                "url": image_data_url
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        )
+
+                        cevap = response.choices[0].message.content
+
+                        gecmis.append({
+                            "role": "user",
+                            "content": f"[RESİM] {prompt}",
+                            "image": image_data_url
+                        })
+
+                        gecmis.append({
+                            "role": "assistant",
+                            "content": cevap
+                        })
+
                     data[username]["chats"][active_chat] = gecmis
                     save_data(data)
+
+                    return jsonify({
+                        "status": "success",
+                        "answer": cevap
+                    })
+
                 except Exception as e:
                     return jsonify({
                         "status": "error",
                         "error": str(e)
                     })
-
-                return jsonify({
-                    "status": "success",
-                    "answer": cevap
-                })
 
     chat_list_html = "".join([
         f'<a class="chat-item {"active" if cid == active_chat else ""}" href="/switch/{cid}">{cid}</a>'
