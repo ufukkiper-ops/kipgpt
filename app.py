@@ -352,14 +352,14 @@ Lütfen daha önce hazırlanan taslağı, kullanıcının yeni düzenleme isteğ
     </div>
     """
     return render_page(content_html)
-
-@app.route("/", methods=["GET", "POST"])
 def image_file_to_data_url(file_storage):
-    """Gelen resmi base64 formatına çeviren yardımcı fonksiyon."""
+    """Gelen resmi base64 formatına çevirir."""
     mime_type = file_storage.mimetype or "image/jpeg"
     raw = file_storage.read()
     encoded = base64.b64encode(raw).decode("utf-8")
     return f"data:{mime_type};base64,{encoded}"
+@app.route("/", methods=["GET", "POST"])
+
 def index():
     if "user" not in session: return redirect(url_for("login"))
     username = session["user"]
