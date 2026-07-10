@@ -367,7 +367,11 @@ async function sendTextMessage(event) {
     const input = document.getElementById("chat-input");
     const message = input.value.trim();
 
-    if (!message) return;
+    const fileInput = document.getElementById("file-input");
+
+if (!message && fileInput.files.length === 0) {
+    return;
+}
 
     const messages = document.querySelector(".messages");
 
@@ -384,8 +388,17 @@ async function sendTextMessage(event) {
     messages.scrollTop = messages.scrollHeight;
 
     const formData = new FormData();
-    formData.append("action", "text");
+    const fileInput = document.getElementById("file-input");
+
+if (fileInput.files.length > 0) {
+    formData.set("action", "image");
+    formData.append("image", fileInput.files[0]);
+    formData.append("image_prompt", message || "Bu resmi detaylı analiz et.");
+} else {
+    formData.set("action", "text");
     formData.append("soru", message);
+}
+
 
     input.value = "";
 
@@ -776,6 +789,7 @@ def index():
             soru = request.form.get("soru", "").strip()
             if soru != "":
                 gecmis.append({"role": "user", "content": soru})
+                
                 try:
                     response = client.chat.completions.create(
                         model="gpt-4o-mini",
@@ -819,9 +833,15 @@ def index():
                     data[username]["chats"][active_chat] = gecmis
                     save_data(data)
                 except Exception as e:
-                    print(f"Hata: {e}")
+                 return jsonify({
+        "status": "error",
+        "error": str(e)
+    })
 
-                return redirect(url_for("index"))
+    return jsonify({
+    "status": "success",
+    "answer": cevap
+})
 
     chat_list_html = "".join([
         f'<a class="chat-item {"active" if cid == active_chat else ""}" href="/switch/{cid}">{cid}</a>'
