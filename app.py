@@ -375,7 +375,7 @@ def image_file_to_data_url(file_storage):
     raw = file_storage.read()
     encoded = base64.b64encode(raw).decode("utf-8")
     return f"data:{mime_type};base64,{encoded}"
-@app.route("/", methods=["GET", "POST"])
+
 def pdf_to_text(file_storage):
     """PDF içindeki metni çıkarır."""
     reader = PdfReader(file_storage)
@@ -388,7 +388,7 @@ def pdf_to_text(file_storage):
             text += page_text + "\n"
 
     return text
-
+@app.route("/", methods=["GET", "POST"])
 def index():
     if "user" not in session: return redirect(url_for("login"))
     username = session["user"]
@@ -406,121 +406,149 @@ def index():
         client = get_client()
 
         if client is None:
-            return jsonify({"status": "error", "error": "Sunucuda OPENAI_API_KEY ayarlı değil."}), 400
+            return jsonify({
+                "status": "error",
+                "error": "Sunucuda OPENAI_API_KEY ayarlı değil."
+            }), 400
 
+        # ------------------ TEXT ------------------
         if action == "text":
+
             soru = request.form.get("soru", "").strip()
-            if soru != "":
-                gecmis.append({"role": "user", "content": soru})
-                
+
+            if soru:
+
+                gecmis.append({
+                    "role": "user",
+                    "content": soru
+                })
+
                 try:
+
                     response = client.chat.completions.create(
                         model="gpt-4o-mini",
-                        messages=[{"role": m["role"], "content": m["content"]} for m in gecmis]
+                        messages=[
+                            {
+                                "role": m["role"],
+                                "content": m["content"]
+                            }
+                            for m in gecmis
+                        ]
                     )
-                    cevap = response.choices[0].message.content
-                except Exception as e:
-                    cevap = f"AI hatası: {str(e)}"
 
-                gecmis.append({"role": "assistant", "content": cevap})
+                    cevap = response.choices[0].message.content
+
+                except Exception as e:
+
+                    cevap = f"AI hatası: {e}"
+
+                gecmis.append({
+                    "role": "assistant",
+                    "content": cevap
+                })
+
                 data[username]["chats"][active_chat] = gecmis
                 save_data(data)
-                return jsonify({"status": "success", "answer": cevap})
 
-            elif action == "image":
-             uploaded_file = request.files.get("image")
-            prompt = request.form.get("image_prompt", "").strip() or "Bu dosyayı analiz et."
+                return jsonify({
+                    "status": "success",
+                    "answer": cevap
+                })
 
-            if uploaded_file and uploaded_file.filename != "":
+        # ------------------ IMAGE / PDF ------------------
+        elif action == "image":
 
-                try:
+            uploaded_file = request.files.get("image")
 
-                    # ---------------- PDF ----------------
-                    if uploaded_file.mimetype == "application/pdf":
+            if not uploaded_file or uploaded_file.filename == "":
+                return jsonify({
+                    "status": "error",
+                    "error": "Dosya seçilmedi."
+                })
 
-                        pdf_text = pdf_to_text(uploaded_file)
+            prompt = request.form.get(
+                "image_prompt",
+                ""
+            ).strip() or "Bu dosyayı analiz et."
 
-                        if not pdf_text.strip():
-                            return jsonify({
-                                "status": "error",
-                                "error": "PDF içerisinden metin okunamadı."
-                            })
+            try:
 
-                        response = client.chat.completions.create(
-                            model="gpt-4o-mini",
-                            messages=[
-                                {
-                                    "role": "user",
-                                    "content":
-                                        f"{prompt}\n\nPDF İçeriği:\n\n{pdf_text}"
-                                }
-                            ]
-                        )
+                # ---------- PDF ----------
+                if uploaded_file.mimetype == "application/pdf":
 
-                        cevap = response.choices[0].message.content
+                    pdf_text = pdf_to_text(uploaded_file)
 
-                        gecmis.append({
-                            "role": "user",
-                            "content": f"[PDF] {uploaded_file.filename}"
-                        })
+                    response = client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[
+                            {
+                                "role": "user",
+                                "content":
+                                f"{prompt}\n\nPDF İçeriği:\n\n{pdf_text}"
+                            }
+                        ]
+                    )
 
-                        gecmis.append({
-                            "role": "assistant",
-                            "content": cevap
-                        })
+                    cevap = response.choices[0].message.content
 
-                    # ---------------- RESİM ----------------
-                    else:
+                    gecmis.append({
+                        "role": "user",
+                        "content": f"[PDF] {uploaded_file.filename}"
+                    })
 
-                        image_data_url = image_file_to_data_url(uploaded_file)
+                # ---------- IMAGE ----------
+                else:
 
-                        response = client.chat.completions.create(
-                            model="gpt-4o-mini",
-                            messages=[
-                                {
-                                    "role": "user",
-                                    "content": [
-                                        {
-                                            "type": "text",
-                                            "text": prompt
-                                        },
-                                        {
-                                            "type": "image_url",
-                                            "image_url": {
-                                                "url": image_data_url
-                                            }
+                    image_data_url = image_file_to_data_url(uploaded_file)
+
+                    response = client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[
+                            {
+                                "role": "user",
+                                "content": [
+                                    {
+                                        "type": "text",
+                                        "text": prompt
+                                    },
+                                    {
+                                        "type": "image_url",
+                                        "image_url": {
+                                            "url": image_data_url
                                         }
-                                    ]
-                                }
-                            ]
-                        )
+                                    }
+                                ]
+                            }
+                        ]
+                    )
 
-                        cevap = response.choices[0].message.content
+                    cevap = response.choices[0].message.content
 
-                        gecmis.append({
-                            "role": "user",
-                            "content": f"[RESİM] {prompt}",
-                            "image": image_data_url
-                        })
-
-                        gecmis.append({
-                            "role": "assistant",
-                            "content": cevap
-                        })
-
-                    data[username]["chats"][active_chat] = gecmis
-                    save_data(data)
-
-                    return jsonify({
-                        "status": "success",
-                        "answer": cevap
+                    gecmis.append({
+                        "role": "user",
+                        "content": f"[RESİM] {prompt}",
+                        "image": image_data_url
                     })
 
-                except Exception as e:
-                    return jsonify({
-                        "status": "error",
-                        "error": str(e)
-                    })
+                gecmis.append({
+                    "role": "assistant",
+                    "content": cevap
+                })
+
+                data[username]["chats"][active_chat] = gecmis
+                save_data(data)
+
+                return jsonify({
+                    "status": "success",
+                    "answer": cevap
+                })
+
+            except Exception as e:
+
+                return jsonify({
+                    "status": "error",
+                    "error": str(e)
+                })
 
     chat_list_html = "".join([
         f'<a class="chat-item {"active" if cid == active_chat else ""}" href="/switch/{cid}">{cid}</a>'
@@ -532,10 +560,13 @@ def index():
         role = mesaj.get("role", "assistant")
         content = mesaj.get("content", "")
         css = "msg msg-user" if role == "user" else "msg msg-bot"
+        if "image" in mesaj:
+         extra_image = ""
         if role == "user":
+            extra_image = f'<br><img src="{mesaj["image"]}">' if "image" in mesaj and mesaj["image"] else ""
+
             messages_html += f'<div class="{css}"><b>Sen:</b><br>{content}</div>'
         else:
-            extra_image = f'<br><img src="{mesaj["image"]}">' if "image" in mesaj and mesaj["image"] else ""
             messages_html += f'<div class="{css}"><b class="bot-text">AI:</b><br><span class="bot-text">{content}</span>{extra_image}</div>'
 
     content = f"""
