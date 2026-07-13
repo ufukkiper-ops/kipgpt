@@ -231,32 +231,26 @@ def mail_page():
     secilen_mail = {}
 
     folder = request.args.get("folder", "inbox")
-    folder_menu = f"""
-    <div style="
-    display:flex;
-    gap:10px;
-    margin-bottom:20px;
-    flex-wrap:wrap;
-    ">
 
-    <a class="btn btn-blue" href="/mail?folder=inbox">📥 Gelen</a>
+    folder_menu = """
+<div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
 
-    <a class="btn btn-blue" href="/mail?folder=sent">📤 Gönderilen</a>
+<a class="btn btn-blue" href="/mail?folder=inbox">📥 Gelen</a>
 
-    <a class="btn btn-blue" href="/mail?folder=spam">🚫 Spam</a>
+<a class="btn btn-blue" href="/mail?folder=sent">📤 Gönderilen</a>
 
-    <a class="btn btn-blue" href="/mail?folder=drafts">⭐ Taslaklar</a>
+<a class="btn btn-blue" href="/mail?folder=spam">🚫 Spam</a>
 
-    <a class="btn btn-blue" href="/mail?folder=trash">🗑 Çöp</a>
+<a class="btn btn-blue" href="/mail?folder=drafts">⭐ Taslaklar</a>
 
-    <a class="btn btn-blue" href="/mail?folder=archive">📦 Arşiv</a>
+<a class="btn btn-blue" href="/mail?folder=trash">🗑 Çöp</a>
 
-    </div>
-    
-    """
+<a class="btn btn-blue" href="/mail?folder=archive">📦 Arşiv</a>
+
+</div>
+"""
 
     try:
-
         if folder == "inbox":
             mailler = get_inbox(20)
 
@@ -279,7 +273,6 @@ def mail_page():
             mailler = get_inbox(20)
 
     except Exception as e:
-
         error = str(e)
         mailler = []
 
