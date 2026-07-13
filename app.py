@@ -477,14 +477,16 @@ def index():
                                     }
                                 ]
                             )
-
+                            print(">>> Başlık oluşturuluyor...")
                             chat_titles[active_chat] = (
                                 title_response.choices[0].message.content.strip()
                             )
+                            print(chat_titles)
+                        except Exception as e:
 
-                        except Exception:
+                          print("BAŞLIK HATASI:", e)
 
-                            chat_titles[active_chat] = soru[:30]
+                        chat_titles[active_chat] = soru[:30]
                     
 
                 except Exception as e:
@@ -497,6 +499,7 @@ def index():
                 })
 
                 data[username]["chats"][active_chat] = gecmis
+                print(data)
                 save_data(data)
 
                 return jsonify({
@@ -627,7 +630,7 @@ def index():
 
             messages_html += f'<div class="{css}"><b>Sen:</b><br>{content}</div>'
         else:
-            messages_html += f'<div class="{css}"><b class="bot-text">AI:</b><br><span class="bot-text">{content}</span>{extra_image}</div>'
+            messages_html += f'<div class="{css}"><b class="bot-text">KipGPT:</b><br><span class="bot-text">{content}</span>{extra_image}</div>'
 
     content = f"""
     <div class="layout">
