@@ -231,7 +231,7 @@ def mail_page():
     secilen_mail = {}
 
     folder = request.args.get("folder", "inbox")
-    folder_menu = """
+    folder_menu = f"""
     <div style="
     display:flex;
     gap:10px;
@@ -712,7 +712,8 @@ def index():
             messages_html += f'<div class="{css}"><b>Sen:</b><br>{content}</div>'
         else:
             messages_html += f'<div class="{css}"><b class="bot-text">KipGPT:</b><br><span class="bot-text">{content}</span>{extra_image}</div>'
-    {folder_menu}
+    
+
     content = f"""
     <div class="layout">
         <div class="sidebar">
