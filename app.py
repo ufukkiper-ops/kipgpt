@@ -252,6 +252,7 @@ def mail_page():
     <a class="btn btn-blue" href="/mail?folder=archive">📦 Arşiv</a>
 
     </div>
+    return render_page(content_html)
     """
 
     try:
