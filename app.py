@@ -43,11 +43,27 @@ def get_client():
     return OpenAI(api_key=api_key) if api_key else None
 BASE_HTML = """
 <!DOCTYPE html>
-<html lang="tr"><head><meta charset="UTF-8"><title>KipGPT</title>
-<link rel="stylesheet" href="/static/style.css">
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-<script src="/static/app.js"></script>
-</head><body>{{ content|safe }}</body></html>
+<title>KipGPT</title>
+
+<link rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}?v=5">
+
+<script defer
+        src="{{ url_for('static', filename='app.js') }}?v=5"></script>
+
+</head>
+
+<body>
+
+{{ content|safe }}
+
+</body>
+</html>
 """
 
 def render_page(content):
@@ -560,8 +576,10 @@ def index():
         role = mesaj.get("role", "assistant")
         content = mesaj.get("content", "")
         css = "msg msg-user" if role == "user" else "msg msg-bot"
+        extra_image = ""
+
         if "image" in mesaj:
-         extra_image = ""
+         extra_image = f'<br><img src="{mesaj["image"]}">'
         if role == "user":
             extra_image = f'<br><img src="{mesaj["image"]}">' if "image" in mesaj and mesaj["image"] else ""
 
