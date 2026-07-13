@@ -435,31 +435,7 @@ Lütfen daha önce hazırlanan taslağı, kullanıcının yeni düzenleme isteğ
         </div>
         """
 
-    content_html = f"""
-    <div class="layout" style="justify-content: center; overflow-y: auto; padding: 20px 15px;">
-        <meta charset="UTF-8">
-        <div class="card" style="max-width: 700px; margin: 0 auto; width: 100%; padding: 20px; box-sizing: border-box;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h2 style="margin:0; font-size:20px;">E-Posta Asistanı</h2>
-                <a href="/"><button class="btn btn-blue" style="padding: 6px 12px; font-size: 13px;">Sohbete Dön</button></a>
-            </div>
-            
-            {"<div class='error'>" + error + "</div>" if error else ""}
-            {"<div class='error' style='background:#d1fae5 !important; color:#065f46 !important; border:1px solid #a7f3d0;'> " + success_message + "</div>" if success_message else ""}
-            
-            {ai_preview_html}
 
-            {folder_menu}
-
-                <div style="margin-top:10px;">
-                <h3 style="font-size: 15px; color: #334155; margin-bottom:8px;">Son Gelen E-Postalar</h3>
-                <hr style="border: 0; border-top: 1px solid #e2e8f0; margin-bottom: 15px;">
-                {mail_items_html}
-            </div>
-        </div>
-    </div>
-    """
-    return render_page(content_html)
 
 
 def image_file_to_data_url(file_storage):
