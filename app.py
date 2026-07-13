@@ -352,28 +352,7 @@ Lütfen daha önce hazırlanan taslağı, kullanıcının yeni düzenleme isteğ
                 success_message = f"{sender} adresine yanıt başarıyla postalandı!"
             except Exception as e:
                 error = f"E-posta gönderilirken hata oluştu: {str(e)}"
-                folder_menu = """
-                <div style="
-                display:flex;
-                gap:10px;
-                margin-bottom:20px;
-                flex-wrap:wrap;
-                ">
-
-                <a class="btn btn-blue" href="/mail?folder=inbox">📥 Gelen</a>
-
-                <a class="btn btn-blue" href="/mail?folder=sent">📤 Gönderilen</a>
-
-                <a class="btn btn-blue" href="/mail?folder=spam">🚫 Spam</a>
-
-                <a class="btn btn-blue" href="/mail?folder=drafts">⭐ Taslaklar</a>
-
-                <a class="btn btn-blue" href="/mail?folder=trash">🗑 Çöp</a>
-
-                <a class="btn btn-blue" href="/mail?folder=archive">📦 Arşiv</a>
-
-                </div>
-                """
+                
     mail_items_html = ""
     if mailler:
         for m in mailler:
