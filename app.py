@@ -28,6 +28,7 @@ from flask import (
 import os
 import json
 import re
+from routes.chat_routes import chat_bp
 from chat import get_client
 from mail import (
     get_inbox,
@@ -41,6 +42,8 @@ from mail import (
 ensure_users_file()
 
 app = Flask(__name__)
+app.register_blueprint(chat_bp)
+
 app.register_blueprint(mail_bp)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "gizli123")
 
@@ -559,18 +562,7 @@ def index():
     messages_html=messages_html,
     title="KipGPT",
 )
-@app.route("/test")
-def test():
-    import os
-    return {
-        "cwd": os.getcwd(),
-        "files": os.listdir("."),
-        "static_exists": os.path.exists("static"),
-        "static_files": os.listdir("static") if os.path.exists("static") else []
-    }
-
 if __name__ == "__main__":
     # Render'ın verdiği PORT'u kullan, yoksa 10000 kullan
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
-   
