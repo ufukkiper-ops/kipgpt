@@ -429,6 +429,29 @@
         if (readerBody) readerBody.hidden = false;
     }
 
+    function formatThreadParticipants(mail) {
+        const messages = mail.thread_messages || [];
+        const names = [];
+        const seen = new Set();
+
+        messages.forEach(function (msg) {
+            const raw = (msg.sender_display || msg.sender || "").trim();
+            if (!raw) return;
+            const key = raw.toLowerCase();
+            if (seen.has(key)) return;
+            seen.add(key);
+            names.push(raw);
+        });
+
+        if (names.length <= 1) {
+            return names[0] || mail.sender_display || mail.sender || "";
+        }
+        if (names.length === 2) {
+            return names[0] + " ve " + names[1];
+        }
+        return names[0] + ", " + names[1] + " ve " + (names.length - 2) + " kişi daha";
+    }
+
     function openMail(mail) {
         if (!mail) return;
 
@@ -489,7 +512,7 @@
             if (manualReplyBody) manualReplyBody.value = "";
 
             if (readerFrom && mail.thread_count > 1) {
-                readerFrom.textContent = (mail.sender_display || mail.sender || "") +
+                readerFrom.textContent = formatThreadParticipants(mail) +
                     " · " + mail.thread_count + " mesaj";
             } else if (readerFrom) {
                 readerFrom.textContent = mail.sender_display || mail.sender || "";

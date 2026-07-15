@@ -194,22 +194,68 @@ def extract_attachments(msg):
     return attachments
 
 
+def _normalize_message_id(value):
+    value = (value or "").strip().lower()
+    if value.startswith("<") and value.endswith(">"):
+        value = value[1:-1]
+    return value
+
+
+def _extract_reference_ids(msg):
+    refs = []
+
+    def add(value):
+        norm = _normalize_message_id(value)
+        if norm and norm not in refs:
+            refs.append(norm)
+
+    add(msg.get("Message-ID"))
+
+    for header_name in ("References", "In-Reply-To"):
+        header = msg.get(header_name)
+        if not header:
+            continue
+        header_text = str(header)
+        for token in re.findall(r"<[^>]+>", header_text):
+            add(token)
+        for token in header_text.split():
+            if token.startswith("<") and token.endswith(">"):
+                continue
+            add(token)
+
+    return refs
+
+
+def _parse_date_ts(date_header):
+    if not date_header:
+        return 0
+    try:
+        return parsedate_to_datetime(date_header).timestamp()
+    except Exception:
+        return 0
+
+
 def parse_message(raw, thread_id=None):
     msg = email.message_from_bytes(raw)
     subject = decode_mail_header(msg.get("Subject"))
     sender_display = decode_mail_header(msg.get("From"))
     match = re.search(r"[\w\.-]+@[\w\.-]+", sender_display)
     sender = match.group(0) if match else sender_display
+    reference_ids = _extract_reference_ids(msg)
+    in_reply_to = _normalize_message_id(msg.get("In-Reply-To"))
 
     return {
         "subject": subject,
         "sender_display": sender_display,
         "sender": sender,
         "date": format_mail_date(msg.get("Date")),
+        "date_ts": _parse_date_ts(msg.get("Date")),
         "content": extract_body(msg),
         "attachments": extract_attachments(msg),
         "thread_id": thread_id or "",
-        "message_id": (msg.get("Message-ID") or "").strip(),
+        "message_id": _normalize_message_id(msg.get("Message-ID")),
+        "in_reply_to": in_reply_to,
+        "reference_ids": reference_ids,
     }
 
 
