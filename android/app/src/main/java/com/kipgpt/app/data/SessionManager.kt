@@ -14,7 +14,8 @@ class SessionManager(private val context: Context) {
         private val KEY_TOKEN = stringPreferencesKey("token")
         private val KEY_BASE_URL = stringPreferencesKey("base_url")
         private val KEY_USER_EMAIL = stringPreferencesKey("user_email")
-        const val DEFAULT_BASE_URL = "http://10.0.2.2:5001/api/v1/"
+        const val DEFAULT_BASE_URL = "https://kip-asistan.onrender.com/api/v1/"
+        const val EMULATOR_BASE_URL = "http://10.0.2.2:5001/api/v1/"
         const val RENDER_BASE_URL = "https://kip-asistan.onrender.com/api/v1/"
     }
 

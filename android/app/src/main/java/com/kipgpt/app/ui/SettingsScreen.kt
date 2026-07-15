@@ -112,27 +112,27 @@ fun SettingsScreen(
                 value = baseUrl.value,
                 onValueChange = { baseUrl.value = it },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("http://10.0.2.2:5001/api/v1/") },
+                placeholder = { Text("https://kip-asistan.onrender.com/api/v1/") },
                 singleLine = true,
             )
             Spacer(Modifier.height(8.dp))
 
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(
-                    selected = baseUrl.value == SessionManager.DEFAULT_BASE_URL,
-                    onClick = { baseUrl.value = SessionManager.DEFAULT_BASE_URL },
-                    label = { Text("Emülatör") },
-                )
-                FilterChip(
                     selected = baseUrl.value == SessionManager.RENDER_BASE_URL,
                     onClick = { baseUrl.value = SessionManager.RENDER_BASE_URL },
                     label = { Text("Render (Canlı)") },
+                )
+                FilterChip(
+                    selected = baseUrl.value == SessionManager.EMULATOR_BASE_URL,
+                    onClick = { baseUrl.value = SessionManager.EMULATOR_BASE_URL },
+                    label = { Text("Emülatör") },
                 )
             }
 
             Spacer(Modifier.height(8.dp))
             Text(
-                "Emülatör: 10.0.2.2 — Gerçek telefon: bilgisayarınızın yerel IP adresi",
+                "Varsayılan: Render canlı sunucu. Emülatör için 10.0.2.2, gerçek telefon için bilgisayarınızın yerel IP adresi.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
