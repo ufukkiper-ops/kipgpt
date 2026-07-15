@@ -184,7 +184,9 @@ fun MailScreen(
             PullToRefreshBox(
                 isRefreshing = loading.value,
                 onRefresh = { loadMails() },
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
             ) {
                 when {
                     loading.value && mails.isEmpty() -> {

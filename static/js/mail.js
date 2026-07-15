@@ -1133,4 +1133,117 @@
         }
     }
 
+    setupMobilePullRefresh();
+
+    function setupMobilePullRefresh() {
+        if (!window.matchMedia("(max-width: 768px)").matches) {
+            return;
+        }
+
+        const listPanel = document.querySelector(".gmail-list-panel");
+        const mailList = document.getElementById("gmail-list");
+        if (!listPanel || !mailList) {
+            return;
+        }
+
+        let indicator = listPanel.querySelector(".pull-refresh-indicator");
+        if (!indicator) {
+            indicator = document.createElement("div");
+            indicator.className = "pull-refresh-indicator";
+            indicator.innerHTML =
+                '<span class="material-icons-outlined pull-refresh-icon">refresh</span>' +
+                '<span class="pull-refresh-text">Yenilemek için bırakın</span>';
+            listPanel.insertBefore(indicator, mailList);
+        }
+
+        let startY = 0;
+        let pulling = false;
+        let pullDistance = 0;
+        let refreshing = false;
+        const threshold = 72;
+
+        function getActiveScrollTarget() {
+            if (refreshing) {
+                return null;
+            }
+
+            if (gmailReader && gmailReader.classList.contains("reader-active")) {
+                if (readerBody && !readerBody.hidden && readerBody.scrollTop <= 0) {
+                    return readerBody;
+                }
+                if (readerThread && !readerThread.hidden && readerThread.scrollTop <= 0) {
+                    return readerThread;
+                }
+                return null;
+            }
+
+            return mailList.scrollTop <= 0 ? mailList : null;
+        }
+
+        function resetIndicator() {
+            indicator.classList.remove("is-visible", "is-ready", "is-refreshing");
+            indicator.style.removeProperty("--pull-offset");
+            const text = indicator.querySelector(".pull-refresh-text");
+            if (text) {
+                text.textContent = "Yenilemek için bırakın";
+            }
+            pullDistance = 0;
+        }
+
+        document.addEventListener("touchstart", function (e) {
+            if (!getActiveScrollTarget()) {
+                pulling = false;
+                return;
+            }
+            startY = e.touches[0].clientY;
+            pulling = true;
+            pullDistance = 0;
+        }, { passive: true });
+
+        document.addEventListener("touchmove", function (e) {
+            if (!pulling) {
+                return;
+            }
+
+            const target = getActiveScrollTarget();
+            if (!target) {
+                pulling = false;
+                resetIndicator();
+                return;
+            }
+
+            pullDistance = e.touches[0].clientY - startY;
+            if (pullDistance <= 0) {
+                resetIndicator();
+                return;
+            }
+
+            e.preventDefault();
+            const offset = Math.min(pullDistance * 0.45, 72);
+            indicator.classList.add("is-visible");
+            indicator.classList.toggle("is-ready", pullDistance >= threshold);
+            indicator.style.setProperty("--pull-offset", offset + "px");
+        }, { passive: false });
+
+        document.addEventListener("touchend", function () {
+            if (!pulling) {
+                return;
+            }
+            pulling = false;
+
+            if (pullDistance >= threshold && !refreshing) {
+                refreshing = true;
+                indicator.classList.add("is-refreshing");
+                const text = indicator.querySelector(".pull-refresh-text");
+                if (text) {
+                    text.textContent = "Yenileniyor...";
+                }
+                window.location.reload();
+                return;
+            }
+
+            resetIndicator();
+        }, { passive: true });
+    }
+
 })();

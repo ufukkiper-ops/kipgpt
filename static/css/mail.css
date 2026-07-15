@@ -906,6 +906,44 @@ body.dialog-open .account-remove-form {
 .gmail-list {
     flex: 1;
     overflow-y: auto;
+    overscroll-behavior-y: contain;
+}
+
+.pull-refresh-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 0;
+    overflow: hidden;
+    color: var(--gmail-text-secondary);
+    font-size: 13px;
+    transform: translateY(var(--pull-offset, 0));
+    transition: opacity .15s ease;
+    pointer-events: none;
+}
+
+.pull-refresh-indicator.is-visible {
+    height: auto;
+    padding: 6px 0 10px;
+}
+
+.pull-refresh-indicator.is-ready {
+    color: var(--gmail-blue);
+}
+
+.pull-refresh-indicator.is-ready .pull-refresh-icon {
+    transform: rotate(180deg);
+}
+
+.pull-refresh-indicator.is-refreshing .pull-refresh-icon {
+    animation: pull-refresh-spin .9s linear infinite;
+}
+
+@keyframes pull-refresh-spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .gmail-list::-webkit-scrollbar {
