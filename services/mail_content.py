@@ -95,8 +95,29 @@ def html_to_text(raw_html):
     if not raw_html:
         return ""
 
-    cleaned = re.sub(r"(?is)<(script|style)[^>]*>.*?</\1>", "", raw_html)
+    cleaned = re.sub(r"(?is)<(script|style|noscript|head)[^>]*>.*?</\1>", "", raw_html)
     cleaned = re.sub(r"(?is)<!--.*?-->", "", cleaned)
+
+    def _replace_link(match):
+        href = (match.group(1) or "").strip()
+        label = re.sub(r"<[^>]+>", " ", match.group(2) or "")
+        label = re.sub(r"\s+", " ", html.unescape(label)).strip()
+        if not label:
+            return href
+        generic = re.match(
+            r"^(click here|here|link|online|view|read more|buraya|tıklayın|tiklayin|gidiniz|burayi)$",
+            label,
+            re.I,
+        )
+        if generic and href:
+            return f"{label}: {href}"
+        return label
+
+    cleaned = re.sub(
+        r'(?is)<a[^>]+href=["\']([^"\']+)["\'][^>]*>(.*?)</a>',
+        _replace_link,
+        cleaned,
+    )
 
     parser = _HTMLTextExtractor()
     try:
@@ -107,6 +128,109 @@ def html_to_text(raw_html):
         text = re.sub(r"<[^>]+>", " ", cleaned)
 
     return html.unescape(text)
+
+
+PLAIN_STUB_PATTERNS = [
+    re.compile(r"e-?posta.{0,30}okuyam", re.I),
+    re.compile(r"alıcınız.{0,30}okuyam", re.I),
+    re.compile(r"cannot read this (e-?)?mail", re.I),
+    re.compile(r"email client.{0,40}(cannot|can't|unable)", re.I),
+    re.compile(r"view (this |the )?(email|message).{0,20}(browser|online)", re.I),
+    re.compile(r"having trouble viewing", re.I),
+    re.compile(r"online görmek", re.I),
+    re.compile(r"buraya gidiniz", re.I),
+    re.compile(r"display\.php", re.I),
+    re.compile(r"jetplatform\.com", re.I),
+    re.compile(r"mailchimp\.com/view", re.I),
+    re.compile(r"list-manage\.com", re.I),
+    re.compile(r"click here to view", re.I),
+    re.compile(r"view in (browser|your browser)", re.I),
+]
+
+BOILERPLATE_LINE_PATTERNS = [
+    re.compile(r"^https?://\S+$", re.I),
+    re.compile(r"^mailto:\S+$", re.I),
+    re.compile(r"^destekleniyor\.?$", re.I),
+    re.compile(r"^supported by\b", re.I),
+    re.compile(r"^unsubscribe\b", re.I),
+    re.compile(r"^abonelikten çık", re.I),
+    re.compile(r"^bu tip e-postalar", re.I),
+    re.compile(r"^e-posta alıcınız", re.I),
+    re.compile(r"^online görmek için", re.I),
+]
+
+
+def is_plain_text_stub(text):
+    if not text:
+        return False
+
+    stripped = text.strip()
+    if len(stripped) < 10:
+        return False
+
+    for pattern in PLAIN_STUB_PATTERNS:
+        if pattern.search(stripped):
+            return True
+
+    urls = re.findall(r"https?://\S+", stripped)
+    without_urls = re.sub(r"https?://\S+", " ", stripped)
+    meaningful = re.sub(r"\s+", " ", without_urls).strip()
+    lower = stripped.lower()
+
+    if urls and len(meaningful) < 160:
+        markers = (
+            "okuyam",
+            "view",
+            "online",
+            "browser",
+            "display",
+            "unsubscribe",
+            "desteklen",
+            "buraya",
+            "gidiniz",
+            "supported",
+        )
+        if any(marker in lower for marker in markers):
+            return True
+
+    return False
+
+
+def _body_quality_score(text):
+    if not text:
+        return 0
+
+    stripped = text.strip()
+    if not stripped:
+        return 0
+
+    score = len(stripped)
+    urls = len(re.findall(r"https?://", stripped))
+    words = len(re.findall(r"\b[\wçğıöşüÇĞİÖŞÜ]{3,}\b", stripped, re.I))
+    score += words * 8
+    score -= urls * 25
+
+    if is_plain_text_stub(stripped):
+        score -= 500
+
+    return score
+
+
+def _strip_boilerplate_lines(text):
+    if not text:
+        return ""
+
+    kept = []
+    for line in text.split("\n"):
+        stripped = line.strip()
+        if not stripped:
+            kept.append("")
+            continue
+        if any(pattern.search(stripped) for pattern in BOILERPLATE_LINE_PATTERNS):
+            continue
+        kept.append(line.rstrip())
+
+    return "\n".join(kept)
 
 
 def fix_mojibake(text):
@@ -160,6 +284,8 @@ def clean_mail_body(text):
             continue
         if re.match(r"^[A-Za-z0-9+/]{60,}={0,2}$", stripped):
             continue
+        if any(pattern.search(stripped) for pattern in BOILERPLATE_LINE_PATTERNS):
+            continue
         lines.append(line.rstrip())
 
     text = "\n".join(lines)
@@ -172,10 +298,24 @@ def clean_mail_body(text):
 
 def normalize_mail_body(plain_text="", html_text=""):
     plain = clean_mail_body(plain_text or "")
-    html_plain = clean_mail_body(html_to_text(html_text or ""))
+    html_plain = clean_mail_body(html_to_text(html_text or "")) if html_text else ""
+    plain = _strip_boilerplate_lines(plain)
+    html_plain = _strip_boilerplate_lines(html_plain)
+    plain = clean_mail_body(plain)
+    html_plain = clean_mail_body(html_plain)
 
-    if len(plain) >= 20:
-        return plain
-    if len(html_plain) >= 10:
+    plain_stub = is_plain_text_stub(plain)
+
+    if plain_stub and html_plain:
         return html_plain
-    return plain or html_plain
+
+    plain_score = _body_quality_score(plain)
+    html_score = _body_quality_score(html_plain)
+
+    if html_plain and html_score > plain_score:
+        return html_plain
+
+    if plain and not plain_stub:
+        return plain
+
+    return html_plain or plain

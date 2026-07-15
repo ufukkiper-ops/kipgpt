@@ -112,13 +112,19 @@ def _is_attachment_part(part):
     return False
 
 
-def _extract_part_text(part):
+def _extract_part_raw(part):
     payload = part.get_payload(decode=True)
     if not payload:
         return ""
 
     charset = part.get_content_charset()
-    raw = decode_payload(payload, charset)
+    return decode_payload(payload, charset)
+
+
+def _extract_part_text(part):
+    raw = _extract_part_raw(part)
+    if not raw:
+        return ""
     if part.get_content_type() == "text/html":
         return html_to_text(raw)
     return raw
@@ -126,7 +132,7 @@ def _extract_part_text(part):
 
 def extract_body(msg):
     plain_parts = []
-    html_parts = []
+    html_raw_parts = []
 
     if msg.is_multipart():
         for part in msg.walk():
@@ -137,20 +143,19 @@ def extract_body(msg):
 
             ctype = part.get_content_type()
             if ctype == "text/plain":
-                plain_parts.append(_extract_part_text(part))
+                plain_parts.append(_extract_part_raw(part))
             elif ctype == "text/html":
-                html_parts.append(_extract_part_text(part))
+                html_raw_parts.append(_extract_part_raw(part))
     else:
-        ctype = msg.get_content_type()
-        text = _extract_part_text(msg)
-        if ctype == "text/html":
-            html_parts.append(text)
+        raw = _extract_part_raw(msg)
+        if msg.get_content_type() == "text/html":
+            html_raw_parts.append(raw)
         else:
-            plain_parts.append(text)
+            plain_parts.append(raw)
 
     plain_text = "\n\n".join(p for p in plain_parts if p.strip())
-    html_text = "\n\n".join(p for p in html_parts if p.strip())
-    body = normalize_mail_body(plain_text, html_text)
+    html_raw = "\n\n".join(p for p in html_raw_parts if p.strip())
+    body = normalize_mail_body(plain_text, html_raw)
     return clean_mail_body(body)
 
 
