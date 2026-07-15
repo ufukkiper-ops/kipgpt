@@ -6,7 +6,7 @@
 
     <div class="sidebar">
 
-        <h2>Kip Asistan</h2>
+        <h2>KipGPT</h2>
 
         <div class="user-box">
             <b>{{ username }}</b>
@@ -78,14 +78,6 @@
                   onsubmit="return false;"
                   enctype="multipart/form-data">
 
-                <button type="button" class="speech-mic-btn" id="chat-mic-btn" title="Sesle konuş">
-                    <span class="speech-mic-icon">🎤</span>
-                </button>
-
-                <button type="button" class="file-upload-btn" id="file-upload-btn" title="Dosya ekle">
-                    <span class="file-upload-icon">📎</span>
-                </button>
-
                 <input id="file-input"
                        type="file"
                        name="file"
@@ -101,9 +93,17 @@
                        autocomplete="off"
                        autofocus>
 
-                <button class="btn btn-blue" type="submit">
-                    Gönder
-                </button>
+                <div class="input-action-group">
+                    <button type="button" class="icon-round-btn icon-round-btn-attach file-upload-btn" id="file-upload-btn" title="Dosya ekle">
+                        <span class="material-icons-outlined">attach_file</span>
+                    </button>
+                    <button type="button" class="icon-round-btn icon-round-btn-tonal speech-mic-btn" id="chat-mic-btn" title="Sesle konuş">
+                        <span class="material-icons-outlined">mic</span>
+                    </button>
+                    <button class="icon-round-btn icon-round-btn-send chat-send-btn" type="submit" title="Gönder" disabled>
+                        <span class="material-icons-outlined">send</span>
+                    </button>
+                </div>
 
                 <button type="button" class="speech-stop-btn" id="chat-stop-speak-btn" title="Sesi durdur" hidden>
                     ⏹ Durdur

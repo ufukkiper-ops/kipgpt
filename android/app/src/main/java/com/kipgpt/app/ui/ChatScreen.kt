@@ -15,7 +15,9 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -25,18 +27,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.FilledTonalIconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -44,8 +40,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -73,9 +69,6 @@ import com.kipgpt.app.data.SendRequest
 import com.kipgpt.app.data.SpeechHelper
 import kotlinx.coroutines.launch
 
-private val ChatInputButtonSize = 40.dp
-private val ChatInputIconSize = 20.dp
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
@@ -85,7 +78,7 @@ fun ChatScreen(
     val chats = remember { mutableStateListOf<ChatSummary>() }
     val messages = remember { mutableStateListOf<ChatMessage>() }
     val activeChatId = remember { mutableStateOf("") }
-    val chatTitle = remember { mutableStateOf("Kip Asistan") }
+    val chatTitle = remember { mutableStateOf("KipGPT") }
     val input = remember { mutableStateOf("") }
     val loading = remember { mutableStateOf(false) }
     val sending = remember { mutableStateOf(false) }
@@ -146,9 +139,11 @@ fun ChatScreen(
         }
     }
 
-    fun loadChats(selectId: String? = null) {
+    fun loadChats(selectId: String? = null, showBlockingLoader: Boolean = false) {
         scope.launch {
-            loading.value = true
+            if (showBlockingLoader) {
+                loading.value = true
+            }
             try {
                 val response = apiClient.api.chats()
                 chats.clear()
@@ -164,12 +159,14 @@ fun ChatScreen(
             } catch (e: Exception) {
                 snackbar.showSnackbar("Sohbetler yüklenemedi: ${e.message}")
             } finally {
-                loading.value = false
+                if (showBlockingLoader) {
+                    loading.value = false
+                }
             }
         }
     }
 
-    LaunchedEffect(Unit) { loadChats() }
+    LaunchedEffect(Unit) { loadChats(showBlockingLoader = true) }
 
     LaunchedEffect(messages.size, sending.value) {
         if (messages.isNotEmpty()) {
@@ -253,7 +250,7 @@ fun ChatScreen(
                         Column {
                             Text(chatTitle.value, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Text(
-                                "AI Asistan",
+                                "KipGPT",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -296,25 +293,82 @@ fun ChatScreen(
                 )
             },
             snackbarHost = { SnackbarHost(snackbar) },
+            bottomBar = {
+                Surface(
+                    tonalElevation = 3.dp,
+                    shadowElevation = 6.dp,
+                ) {
+                    ChatStyleInputBar(
+                        value = input.value,
+                        onValueChange = { input.value = it },
+                        placeholder = "Mesaj yazın...",
+                        enabled = !sending.value && !loading.value,
+                        listening = listening.value,
+                        sendEnabled = input.value.isNotBlank() && !sending.value,
+                        sending = sending.value,
+                        onMicClick = {
+                            if (listening.value) {
+                                speechHelper.stopListening()
+                                listening.value = false
+                            } else {
+                                startVoiceInput()
+                            }
+                        },
+                        onSendClick = {
+                            val text = input.value.trim()
+                            if (text.isBlank()) return@ChatStyleInputBar
+                            scope.launch {
+                                sending.value = true
+                                messages.add(ChatMessage("user", text))
+                                input.value = ""
+                                try {
+                                    if (activeChatId.value.isBlank()) {
+                                        val created = apiClient.api.newChat()
+                                        val newId = created["id"].orEmpty()
+                                        if (newId.isBlank()) {
+                                            throw IllegalStateException("Sohbet oluşturulamadı")
+                                        }
+                                        activeChatId.value = newId
+                                    }
+                                    val response = apiClient.api.sendMessage(
+                                        activeChatId.value,
+                                        SendRequest(text),
+                                    )
+                                    messages.add(ChatMessage("assistant", response.answer))
+                                    chatTitle.value = response.chat_title
+                                    loadChats(activeChatId.value)
+                                } catch (e: Exception) {
+                                    messages.removeLastOrNull()
+                                    snackbar.showSnackbar("Gönderilemedi: ${e.message}")
+                                } finally {
+                                    sending.value = false
+                                }
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .windowInsetsPadding(WindowInsets.ime)
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                    )
+                }
+            },
         ) { padding ->
-            Column(
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding)
-                    .imePadding(),
+                    .padding(padding),
             ) {
-                if (loading.value) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
+                when {
+                    loading.value -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier.align(Alignment.Center),
+                        )
                     }
-                } else if (messages.isEmpty() && !sending.value) {
-                    Box(
-                        Modifier
-                            .weight(1f)
-                            .fillMaxWidth(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    messages.isEmpty() && !sending.value -> {
+                        Column(
+                            modifier = Modifier.align(Alignment.Center),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
                             Text(
                                 "Merhaba!",
                                 style = MaterialTheme.typography.headlineSmall,
@@ -326,125 +380,40 @@ fun ChatScreen(
                             )
                         }
                     }
-                } else {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        item { Spacer(Modifier.height(4.dp)) }
-                        items(messages) { message ->
-                            MessageBubble(message, speechHelper)
-                        }
-                        if (sending.value) {
-                            item {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 4.dp),
-                                    horizontalArrangement = Arrangement.Start,
-                                ) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.padding(8.dp),
-                                        strokeWidth = 2.dp,
-                                    )
-                                    Text(
-                                        "Yanıt yazılıyor...",
-                                        modifier = Modifier.padding(top = 12.dp),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                            }
-                        }
-                        item { Spacer(Modifier.height(4.dp)) }
-                    }
-                }
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.Bottom,
-                ) {
-                    OutlinedTextField(
-                        value = input.value,
-                        onValueChange = { input.value = it },
-                        modifier = Modifier.weight(1f),
-                        placeholder = { Text("Mesaj yazın...") },
-                        enabled = !sending.value,
-                        maxLines = 4,
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        FilledTonalIconButton(
-                            onClick = {
-                                if (listening.value) {
-                                    speechHelper.stopListening()
-                                    listening.value = false
-                                } else {
-                                    startVoiceInput()
-                                }
-                            },
-                            enabled = !sending.value,
-                            modifier = Modifier.size(ChatInputButtonSize),
-                            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                containerColor = if (listening.value) {
-                                    MaterialTheme.colorScheme.errorContainer
-                                } else {
-                                    MaterialTheme.colorScheme.secondaryContainer
-                                },
-                            ),
+                    else -> {
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 12.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            Icon(
-                                if (listening.value) Icons.Default.Stop else Icons.Default.Mic,
-                                contentDescription = "Sesle konuş",
-                                modifier = Modifier.size(ChatInputIconSize),
-                                tint = if (listening.value) {
-                                    MaterialTheme.colorScheme.error
-                                } else {
-                                    MaterialTheme.colorScheme.onSecondaryContainer
-                                },
-                            )
-                        }
-                        FilledIconButton(
-                            onClick = {
-                                val text = input.value.trim()
-                                if (text.isBlank() || activeChatId.value.isBlank()) return@FilledIconButton
-                                scope.launch {
-                                    sending.value = true
-                                    messages.add(ChatMessage("user", text))
-                                    input.value = ""
-                                    try {
-                                        val response = apiClient.api.sendMessage(
-                                            activeChatId.value,
-                                            SendRequest(text),
+                            item { Spacer(Modifier.height(4.dp)) }
+                            items(messages) { message ->
+                                MessageBubble(message, speechHelper)
+                            }
+                            if (sending.value) {
+                                item {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 4.dp),
+                                        horizontalArrangement = Arrangement.Start,
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.padding(8.dp),
+                                            strokeWidth = 2.dp,
                                         )
-                                        messages.add(ChatMessage("assistant", response.answer))
-                                        chatTitle.value = response.chat_title
-                                        loadChats(activeChatId.value)
-                                    } catch (e: Exception) {
-                                        messages.removeLastOrNull()
-                                        snackbar.showSnackbar("Gönderilemedi: ${e.message}")
-                                    } finally {
-                                        sending.value = false
+                                        Text(
+                                            "Yanıt yazılıyor...",
+                                            modifier = Modifier.padding(top = 12.dp),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
                                     }
                                 }
-                            },
-                            enabled = !sending.value && input.value.isNotBlank(),
-                            modifier = Modifier.size(ChatInputButtonSize),
-                        ) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.Send,
-                                contentDescription = "Gönder",
-                                modifier = Modifier.size(ChatInputIconSize),
-                            )
+                            }
+                            item { Spacer(Modifier.height(4.dp)) }
                         }
                     }
                 }

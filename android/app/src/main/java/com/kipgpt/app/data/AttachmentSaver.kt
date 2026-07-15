@@ -17,7 +17,7 @@ object AttachmentSaver {
         val values = ContentValues().apply {
             put(MediaStore.Downloads.DISPLAY_NAME, safeName)
             put(MediaStore.Downloads.MIME_TYPE, mime.ifBlank { "application/octet-stream" })
-            put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/KipAsistan")
+            put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/KipGPT")
         }
 
         val resolver = context.contentResolver

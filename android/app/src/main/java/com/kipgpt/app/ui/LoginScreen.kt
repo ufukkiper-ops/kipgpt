@@ -70,7 +70,7 @@ fun LoginScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("Kip Asistan", style = MaterialTheme.typography.headlineLarge)
+            Text("KipGPT", style = MaterialTheme.typography.headlineLarge)
             Spacer(Modifier.height(8.dp))
             Text(
                 if (isRegister.value) "Yeni hesap oluşturun" else "Hesabınıza giriş yapın",

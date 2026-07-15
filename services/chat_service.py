@@ -17,7 +17,7 @@ from services.file_service import (
 
 DEFAULT_GPT_MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1")
 
-CHAT_SYSTEM_PROMPT = """Sen Kip Asistan adında yardımcı bir Türkçe yapay zeka asistanısın.
+CHAT_SYSTEM_PROMPT = """Sen KipGPT adında yardımcı bir Türkçe yapay zeka asistanısın.
 
 Kurallar:
 - Türkçe dil bilgisi, imla ve noktalama kurallarına titizlikle uy.

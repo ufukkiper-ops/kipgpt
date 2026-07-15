@@ -60,7 +60,7 @@ def render_messages(gecmis):
             if "image" in mesaj:
                 extra_image = f'<br><img src="{mesaj["image"]}" class="msg-image">'
             messages_html += (
-                f'<div class="{css}"><b class="bot-text">Kip Asistan:</b><br>'
+                f'<div class="{css}"><b class="bot-text">KipGPT:</b><br>'
                 f'<span class="bot-text">{content}</span>{file_html}{extra_image}</div>'
             )
 

@@ -13,7 +13,7 @@
             </button>
             <a href="/mail" class="gmail-logo">
                 <span class="logo-icon material-icons-outlined">mail</span>
-                <span class="logo-text">Kip Asistan Mail</span>
+                <span class="logo-text">KipGPT Mail</span>
             </a>
         </div>
 
@@ -339,9 +339,8 @@
                                         <input type="file" name="attachment" class="mail-attach-input" id="manual-reply-file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" hidden>
                                     </label>
                                     <button type="button" class="action-btn" id="manual-reply-cancel">Vazgeç</button>
-                                    <button type="submit" class="action-btn send-reply-btn">
+                                    <button type="submit" class="icon-round-btn icon-round-btn-send send-reply-btn" title="Gönder">
                                         <span class="material-icons-outlined">send</span>
-                                        Gönder
                                     </button>
                                 </div>
                             </form>
@@ -350,7 +349,7 @@
                         <div class="ai-panel" id="ai-panel" hidden>
                             <div class="ai-panel-header">
                                 <span class="material-icons-outlined">auto_awesome</span>
-                                <h3>Kip Asistan ile Yanıt Oluştur</h3>
+                                <h3>KipGPT ile Yanıt Oluştur</h3>
                             </div>
                             <p class="draft-edit-hint">AI, yazdığınız ipucu doğrultusunda yanıt üretir. Örn: "Kısa ve net yaz", "Toplantıyı Perşembe 14:00 öner".</p>
                             <form method="post" class="ai-form">
@@ -370,9 +369,8 @@
                                         <span class="material-icons-outlined">mic</span>
                                     </button>
                                 </div>
-                                <button type="submit" class="ai-generate-btn">
+                                <button type="submit" class="icon-round-btn icon-round-btn-send ai-generate-btn" title="Yanıt Oluştur">
                                     <span class="material-icons-outlined">auto_awesome</span>
-                                    Yanıt Oluştur
                                 </button>
                             </form>
                         </div>
@@ -429,7 +427,9 @@
                     Ekle
                     <input type="file" name="attachment" id="compose-file" class="mail-attach-input" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" hidden>
                 </label>
-                <button type="submit" class="send-compose-btn">Gönder</button>
+                <button type="submit" class="icon-round-btn icon-round-btn-send send-compose-btn" title="Gönder">
+                    <span class="material-icons-outlined">send</span>
+                </button>
             </div>
         </form>
     </div>
@@ -647,7 +647,7 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/speech.js') }}?v=1"></script>
-<script src="{{ url_for('static', filename='js/mail.js') }}?v=44"></script>
+<script src="{{ url_for('static', filename='js/mail.js') }}?v=45"></script>
 <script id="provider-data" type="application/json">{{ providers|tojson }}</script>
 <script id="sensitivity-data" type="application/json">{{ sensitivity_presets|tojson }}</script>
 {% endblock %}

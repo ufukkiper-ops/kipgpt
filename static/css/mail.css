@@ -1657,15 +1657,15 @@ body.dialog-open .account-remove-form {
 .speech-field-wrap .manual-reply-editor,
 .speech-field-wrap .ai-editor {
     width: 100%;
-    padding-right: 48px;
+    padding-right: 52px;
 }
 
 .speech-field-mic {
     position: absolute;
     right: 10px;
     bottom: 10px;
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
     border: 1px solid var(--gmail-border);
     border-radius: 50%;
     background: #fff;
@@ -1694,6 +1694,51 @@ body.dialog-open .account-remove-form {
     background: #fce8e6;
     border-color: #d93025;
     color: #d93025;
+}
+
+.icon-round-btn {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    padding: 0;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border: none;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+}
+
+.icon-round-btn .material-icons-outlined {
+    font-size: 20px;
+}
+
+.icon-round-btn-tonal {
+    background: #e8eaed;
+    color: #3c4043;
+}
+
+.icon-round-btn-tonal:hover {
+    background: #dadce0;
+}
+
+.icon-round-btn-send {
+    background: #1a73e8;
+    color: #fff;
+}
+
+.icon-round-btn-send:hover {
+    background: #1765cc;
+}
+
+.send-reply-btn {
+    background: #137333;
+}
+
+.send-reply-btn:hover {
+    background: #0d652d;
 }
 
 #reader-stop-speak-btn:not([hidden]) {
@@ -1798,6 +1843,11 @@ body.dialog-open .account-remove-form {
     flex-wrap: wrap;
 }
 
+.manual-reply-actions .send-reply-btn,
+.ai-reply-actions .send-reply-btn {
+    margin-left: auto;
+}
+
 .ai-revise-panel {
     margin-top: 20px;
     padding-top: 16px;
@@ -1892,29 +1942,26 @@ body.dialog-open .account-remove-form {
     margin-bottom: 12px;
 }
 
+.ai-form {
+    display: flex;
+    flex-direction: column;
+}
+
 .ai-form textarea:focus {
     border-color: var(--gmail-blue);
 }
 
 .ai-generate-btn {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    height: 36px;
-    padding: 0 20px;
-    border: none;
-    border-radius: 18px;
-    background: var(--gmail-blue);
-    color: #fff;
-    font-size: 14px;
-    font-weight: 500;
-    font-family: inherit;
-    cursor: pointer;
-    transition: background .15s;
+    align-self: flex-end;
+    margin-top: 4px;
 }
 
-.ai-generate-btn:hover {
-    background: var(--gmail-blue-hover);
+.ai-generate-btn.revise-btn {
+    background: #5f6368;
+}
+
+.ai-generate-btn.revise-btn:hover {
+    background: #4a4d51;
 }
 
 .ai-avatar {
@@ -1952,17 +1999,11 @@ body.dialog-open .account-remove-form {
 }
 
 .send-reply-btn {
-    background: #137333;
     color: #fff;
-    border-color: #137333;
 }
 
 .revise-btn {
-    background: #5f6368;
-}
-
-.revise-btn:hover {
-    background: #4a4d51;
+    color: #fff;
 }
 
 /* AI Preview (from server) */
@@ -2222,6 +2263,10 @@ body.dialog-open .account-remove-form {
     flex-wrap: wrap;
 }
 
+.compose-footer .send-compose-btn {
+    margin-left: auto;
+}
+
 .attach-btn {
     display: inline-flex;
     align-items: center;
@@ -2320,18 +2365,7 @@ body.dialog-open .account-remove-form {
 }
 
 .send-compose-btn {
-    height: 36px;
-    min-width: 96px;
-    padding: 0 24px;
-    border: none;
-    border-radius: 18px;
     background: #1a73e8;
-    color: #fff;
-    font-size: 14px;
-    font-weight: 500;
-    font-family: inherit;
-    cursor: pointer;
-    white-space: nowrap;
 }
 
 .send-compose-btn:hover {

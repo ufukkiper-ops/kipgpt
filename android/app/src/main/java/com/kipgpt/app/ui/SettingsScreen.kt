@@ -33,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.kipgpt.app.BuildConfig
 import com.kipgpt.app.data.ApiClient
 import com.kipgpt.app.data.SessionManager
 import kotlinx.coroutines.launch
@@ -135,6 +136,12 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "KipGPT sürümü: ${BuildConfig.VERSION_NAME}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             Spacer(Modifier.height(16.dp))
 
             Button(
@@ -205,13 +212,6 @@ fun SettingsScreen(
                     Text("Çıkış Yap")
                 }
             }
-
-            Spacer(Modifier.height(24.dp))
-            Text(
-                "Kip Asistan v1.1.0",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
     }
 }

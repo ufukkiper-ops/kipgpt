@@ -380,7 +380,7 @@ def index():
 
         messages_html=messages_html,
 
-        title="Kip Asistan",
+        title="KipGPT",
 
     )
 

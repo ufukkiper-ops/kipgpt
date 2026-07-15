@@ -94,7 +94,7 @@ function appendMessage(role, text, fileMeta) {
     const div = document.createElement("div");
     div.className = role === "user" ? "msg msg-user" : "msg msg-bot";
 
-    const label = role === "user" ? "Sen" : "Kip Asistan";
+    const label = role === "user" ? "Sen" : "KipGPT";
     const fileHtml = renderFileBadge(fileMeta);
     const bodyHtml = escapeHtml(text).replace(/\n/g, "<br>");
 
@@ -138,12 +138,12 @@ function enhanceExistingBotMessages() {
 
         const textEl = msg.querySelector(".bot-text:last-of-type") || msg.querySelector(".bot-text");
         let text = textEl ? textEl.textContent : msg.textContent;
-        text = (text || "").replace(/^Kip Asistan:\s*/i, "").trim();
+        text = (text || "").replace(/^Kip(?:GPT| Asistan):\s*/i, "").trim();
         if (!text) return;
 
         const head = document.createElement("div");
         head.className = "msg-bot-head";
-        head.innerHTML = "<b>Kip Asistan:</b>";
+        head.innerHTML = "<b>KipGPT:</b>";
 
         const speakBtn = document.createElement("button");
         speakBtn.type = "button";
@@ -203,6 +203,13 @@ function showSelectedFilePreview(file) {
     bar.hidden = false;
 }
 
+function updateChatSendState() {
+    const chatInput = document.getElementById("chat-input");
+    const chatSendBtn = document.querySelector(".chat-send-btn");
+    if (!chatInput || !chatSendBtn) return;
+    chatSendBtn.disabled = !chatInput.value.trim() && !selectedChatFile;
+}
+
 function clearSelectedFilePreview() {
     const bar = document.getElementById("file-preview-bar");
     const content = document.getElementById("file-preview-content");
@@ -212,6 +219,7 @@ function clearSelectedFilePreview() {
     if (content) content.innerHTML = "";
     if (bar) bar.hidden = true;
     if (fileInput) fileInput.value = "";
+    updateChatSendState();
 }
 
 function bindChatPage() {
@@ -257,6 +265,7 @@ function bindChatPage() {
             }
             selectedChatFile = file;
             showSelectedFilePreview(selectedChatFile);
+            updateChatSendState();
         });
     }
 
@@ -266,6 +275,12 @@ function bindChatPage() {
 
     const chatMicBtn = document.getElementById("chat-mic-btn");
     const chatInput = document.getElementById("chat-input");
+
+    if (chatInput) {
+        chatInput.addEventListener("input", updateChatSendState);
+        updateChatSendState();
+    }
+
     if (chatMicBtn && chatInput && window.KipSpeech) {
         KipSpeech.bindMicToField(chatMicBtn, chatInput, { append: true });
     }
@@ -312,7 +327,7 @@ async function sendTextMessage(event) {
 
     const loading = document.createElement("div");
     loading.className = "msg msg-bot";
-    loading.innerHTML = "<b>Kip Asistan:</b><br><i>Kip Asistan düşünüyor...</i>";
+    loading.innerHTML = "<b>KipGPT:</b><br><i>KipGPT düşünüyor...</i>";
     messages.appendChild(loading);
 
     const formData = new FormData();
@@ -328,6 +343,7 @@ async function sendTextMessage(event) {
     }
 
     input.value = "";
+    updateChatSendState();
 
     try {
         const response = await fetch("/", {

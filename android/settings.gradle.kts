@@ -13,5 +13,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "KipAsistan"
+rootProject.name = "KipGPT"
 include(":app")

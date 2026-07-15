@@ -1,6 +1,9 @@
 package com.kipgpt.app.ui
 
-import androidx.compose.foundation.background
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -64,6 +67,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import com.kipgpt.app.data.ApiClient
 import com.kipgpt.app.data.AttachmentSaver
 import com.kipgpt.app.data.MailAiReplyRequest
@@ -392,9 +396,79 @@ fun MailDetailScreen(
     val reviseNote = remember { mutableStateOf("") }
     val aiLoading = remember { mutableStateOf(false) }
     val sendingReply = remember { mutableStateOf(false) }
+    val listeningInstruction = remember { mutableStateOf(false) }
+    val listeningRevise = remember { mutableStateOf(false) }
+    val pendingVoiceTarget = remember { mutableStateOf<String?>(null) }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val speechHelper = remember { SpeechHelper(context) }
+
+    val micPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        val target = pendingVoiceTarget.value
+        pendingVoiceTarget.value = null
+        if (granted && target != null) {
+            startVoiceInputFor(target, skipPermissionCheck = true)
+        } else if (!granted) {
+            scope.launch { snackbar.showSnackbar("Mikrofon izni gerekli") }
+        }
+    }
+
+    fun startVoiceInputFor(
+        target: String,
+        skipPermissionCheck: Boolean = false,
+    ) {
+        if (!speechHelper.isListenAvailable()) {
+            scope.launch {
+                snackbar.showSnackbar("Ses tanıma yok. Google uygulamasını güncelleyin.")
+            }
+            return
+        }
+        if (!skipPermissionCheck &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            pendingVoiceTarget.value = target
+            micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            return
+        }
+
+        val setListening = { active: Boolean ->
+            when (target) {
+                "instruction" -> listeningInstruction.value = active
+                "revise" -> listeningRevise.value = active
+            }
+        }
+        val appendText = { transcript: String ->
+            when (target) {
+                "instruction" -> {
+                    aiInstruction.value = if (aiInstruction.value.isBlank()) {
+                        transcript
+                    } else {
+                        "${aiInstruction.value} $transcript"
+                    }
+                }
+                "revise" -> {
+                    reviseNote.value = if (reviseNote.value.isBlank()) {
+                        transcript
+                    } else {
+                        "${reviseNote.value} $transcript"
+                    }
+                }
+            }
+        }
+
+        setListening(true)
+        val started = speechHelper.startListening(
+            onResult = appendText,
+            onError = { message -> scope.launch { snackbar.showSnackbar(message) } },
+            onEnd = { setListening(false) },
+        )
+        if (!started) {
+            setListening(false)
+        }
+    }
 
     LaunchedEffect(mail.id, folder) {
         detailLoading.value = true
@@ -693,7 +767,7 @@ fun MailDetailScreen(
                 ) {
                     Column(Modifier.padding(16.dp)) {
                         Text(
-                            "Kip Asistan ile Yanıt",
+                            "KipGPT ile Yanıt",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -706,30 +780,35 @@ fun MailDetailScreen(
                         Spacer(Modifier.height(12.dp))
 
                         if (aiDraft.value.isBlank()) {
-                            OutlinedTextField(
+                            InlineInputActionBar(
                                 value = aiInstruction.value,
                                 onValueChange = { aiInstruction.value = it },
-                                modifier = Modifier.fillMaxWidth(),
-                                label = { Text("İpucu / Talimat") },
-                                placeholder = { Text("Örn: Kısa ve net yaz, fiyat teklifini ekle...") },
-                                minLines = 3,
-                            )
-                            Spacer(Modifier.height(12.dp))
-                            Button(
-                                onClick = { generateAiReply() },
+                                placeholder = "İpucu / talimat (isteğe bağlı)",
                                 enabled = !aiLoading.value && !detailLoading.value,
-                                modifier = Modifier.fillMaxWidth(),
-                                contentPadding = PaddingValues(vertical = 14.dp),
-                            ) {
-                                if (aiLoading.value) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(20.dp),
-                                        strokeWidth = 2.dp,
+                                minLines = 2,
+                                maxLines = 4,
+                                trailingContent = {
+                                    RoundMicButton(
+                                        listening = listeningInstruction.value,
+                                        enabled = !aiLoading.value && !detailLoading.value,
+                                        onClick = {
+                                            if (listeningInstruction.value) {
+                                                speechHelper.stopListening()
+                                                listeningInstruction.value = false
+                                            } else {
+                                                startVoiceInputFor("instruction")
+                                            }
+                                        },
                                     )
-                                } else {
-                                    Text("Yanıt Oluştur")
-                                }
-                            }
+                                    RoundActionButton(
+                                        icon = Icons.Default.AutoAwesome,
+                                        contentDescription = "Yanıt Oluştur",
+                                        enabled = !aiLoading.value && !detailLoading.value,
+                                        loading = aiLoading.value,
+                                        onClick = { generateAiReply() },
+                                    )
+                                },
+                            )
                         } else {
                             OutlinedTextField(
                                 value = aiDraft.value,
@@ -739,47 +818,41 @@ fun MailDetailScreen(
                                 minLines = 8,
                             )
                             Spacer(Modifier.height(12.dp))
-                            OutlinedTextField(
+                            InlineInputActionBar(
                                 value = reviseNote.value,
                                 onValueChange = { reviseNote.value = it },
-                                modifier = Modifier.fillMaxWidth(),
-                                label = { Text("AI ile güncelle") },
-                                placeholder = { Text("Örn: Daha kısa yaz, daha resmi ol...") },
-                                minLines = 2,
+                                placeholder = "AI ile güncelle...",
+                                enabled = !aiLoading.value && !sendingReply.value,
+                                minLines = 1,
+                                maxLines = 3,
+                                trailingContent = {
+                                    RoundMicButton(
+                                        listening = listeningRevise.value,
+                                        enabled = !aiLoading.value && !sendingReply.value,
+                                        onClick = {
+                                            if (listeningRevise.value) {
+                                                speechHelper.stopListening()
+                                                listeningRevise.value = false
+                                            } else {
+                                                startVoiceInputFor("revise")
+                                            }
+                                        },
+                                    )
+                                    RoundActionButton(
+                                        icon = Icons.Default.Refresh,
+                                        contentDescription = "Güncelle",
+                                        enabled = reviseNote.value.isNotBlank(),
+                                        loading = aiLoading.value,
+                                        onClick = { generateAiReply(revise = true) },
+                                        tonal = true,
+                                    )
+                                    RoundSendButton(
+                                        enabled = aiDraft.value.isNotBlank(),
+                                        loading = sendingReply.value,
+                                        onClick = { sendAiReply() },
+                                    )
+                                },
                             )
-                            Spacer(Modifier.height(12.dp))
-                            Column(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                OutlinedButton(
-                                    onClick = { generateAiReply(revise = true) },
-                                    enabled = !aiLoading.value && reviseNote.value.isNotBlank(),
-                                    modifier = Modifier.fillMaxWidth(),
-                                    contentPadding = PaddingValues(vertical = 12.dp),
-                                ) {
-                                    Text("Güncelle")
-                                }
-                                Button(
-                                    onClick = { sendAiReply() },
-                                    enabled = !sendingReply.value,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    contentPadding = PaddingValues(vertical = 14.dp),
-                                ) {
-                                    if (sendingReply.value) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(20.dp),
-                                            color = MaterialTheme.colorScheme.onPrimary,
-                                            strokeWidth = 2.dp,
-                                        )
-                                    } else {
-                                        Text(
-                                            "Gönder",
-                                            style = MaterialTheme.typography.labelLarge,
-                                        )
-                                    }
-                                }
-                            }
                             Spacer(Modifier.height(8.dp))
                             OutlinedButton(
                                 onClick = {

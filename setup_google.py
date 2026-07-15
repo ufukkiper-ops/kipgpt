@@ -14,7 +14,7 @@ JSON_FILE = ROOT / "google_client_secret.json"
 
 
 def main():
-    print("Kip Asistan — Google tek tıkla kayıt kurulumu (bir kez)\n")
+    print("KipGPT — Google tek tıkla kayıt kurulumu (bir kez)\n")
 
     if JSON_FILE.exists():
         raw = JSON_FILE.read_text(encoding="utf-8")

@@ -1,5 +1,5 @@
 /* ===========================
-   KIP ASISTAN - Modern Light Theme
+   KIPGPT - Modern Light Theme
 =========================== */
 
 *{
@@ -289,24 +289,7 @@ button{
 }
 
 .file-upload-btn{
-    width:44px;
-    height:44px;
-    border-radius:50%;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    cursor:pointer;
     font-size:20px;
-    background:white;
-    border:1px solid #d1d5db;
-    transition:.2s;
-    color:#2563eb;
-    padding:0;
-    flex-shrink:0;
-}
-
-.file-upload-btn:hover{
-    background:#f3f4f6;
 }
 
 .active-chat-title{
@@ -329,7 +312,7 @@ button{
 
 .input-container{
     display:flex;
-    align-items:center;
+    align-items:flex-end;
     gap:12px;
     background:#f9fafb;
     border:1px solid #d1d5db;
@@ -368,9 +351,63 @@ button{
     background:#f3f4f6;
 }
 
-.input-container button{
-    height:46px;
-    padding:0 20px;
+.input-action-group{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    flex-shrink:0;
+}
+
+.icon-round-btn{
+    width:40px;
+    height:40px;
+    border-radius:50%;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    flex-shrink:0;
+    padding:0;
+    border:none;
+    cursor:pointer;
+    transition:.15s;
+}
+
+.icon-round-btn .material-icons-outlined{
+    font-size:20px;
+}
+
+.icon-round-btn-attach{
+    background:#fff;
+    color:#5f6368;
+    border:1px solid #dadce0;
+}
+
+.icon-round-btn-attach:hover{
+    background:#f1f3f4;
+}
+
+.icon-round-btn-tonal{
+    background:#e8eaed;
+    color:#3c4043;
+}
+
+.icon-round-btn-tonal:hover{
+    background:#dadce0;
+}
+
+.icon-round-btn-send{
+    background:#1a73e8;
+    color:#fff;
+}
+
+.icon-round-btn-send:hover:not(:disabled){
+    background:#1765cc;
+}
+
+.icon-round-btn-send:disabled{
+    background:#dadce0;
+    color:#9aa0a6;
+    cursor:not-allowed;
 }
 
 /* Login / Register */
@@ -732,9 +769,12 @@ button{
     transition:.15s;
 }
 
+.input-action-group .speech-mic-btn{
+    border:none;
+    border-radius:50%;
+}
+
 .speech-mic-btn{
-    width:42px;
-    height:42px;
     display:inline-flex;
     align-items:center;
     justify-content:center;

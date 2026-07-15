@@ -8,10 +8,12 @@
     <meta name="viewport"
           content="width=device-width, initial-scale=1">
 
-    <title>{{ title if title else "Kip Asistan" }}</title>
+    <title>{{ title if title else "KipGPT" }}</title>
+
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
 
     <link rel="stylesheet"
-      href="{{ url_for('static', filename='css/style.css') }}?v=13">
+      href="{{ url_for('static', filename='css/style.css') }}?v=14">
 
     {% block head %}{% endblock %}
 
@@ -22,7 +24,7 @@
 {% block content %}{% endblock %}
 
 <script src="{{ url_for('static', filename='js/speech.js') }}?v=1"></script>
-<script src="{{ url_for('static', filename='js/app.js') }}?v=103"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}?v=104"></script>
 
 {% block scripts %}{% endblock %}
 
