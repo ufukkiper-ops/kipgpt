@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block body_class %}auth-page{% endblock %}
+
+{% block content %}
+
+<div class="auth-shell">
+<div class="card card-register setup-card">
+
+<h2>Google Bağlantısı (Geliştirici)</h2>
+
+<p class="setup-intro">
+    Bu sayfa sadece uygulama sahibi içindir. Bir kez kurulunca giriş ve kayıt sayfalarında
+    <b>Google ile Giriş</b> butonu görünür.
+</p>
+
+{% if error %}
+<div class="error">{{ error }}</div>
+{% endif %}
+
+<form method="post" class="setup-form">
+    <input type="hidden" name="next" value="{{ next_action }}">
+
+    <label class="field-label">Client ID</label>
+    <input type="text" name="client_id" placeholder="....apps.googleusercontent.com" required>
+
+    <label class="field-label">Client Secret</label>
+    <input type="password" name="client_secret" placeholder="GOCSPX-..." required>
+
+    <p class="provider-hint">
+        Redirect URI: <code class="setup-code">{{ redirect_uri }}</code>
+    </p>
+
+    <button class="btn btn-blue btn-block" type="submit">Kaydet</button>
+</form>
+
+<p class="auth-footer-link">
+<a href="{{ url_for('auth.login') }}">Giriş sayfasına dön</a>
+</p>
+
+</div>
+</div>
+
+{% endblock %}

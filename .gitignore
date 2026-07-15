@@ -1,0 +1,12 @@
+.env
+google_client_secret.json
+users.json
+data.json
+__pycache__/
+*.pyc
+services/__pycache__/
+routes/__pycache__/
+android/.gradle/
+android/app/build/
+android/local.properties
+android/.idea/

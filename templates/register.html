@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 
+{% block body_class %}auth-page{% endblock %}
+
 {% block content %}
 
+<div class="auth-shell">
 <div class="card">
 
 <h2>Kayıt Ol</h2>
@@ -10,40 +13,32 @@
 <div class="error">{{ error }}</div>
 {% endif %}
 
-<form method="post">
+{% if google_enabled %}
+<a href="{{ url_for('auth.google_auth_start', action='register') }}" class="btn-google btn-google-primary">
+    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" width="20" height="20">
+    Google ile Kayıt Ol
+</a>
+<p class="register-lead">Hesabınızı seçin — şifre gerekmez.</p>
+<div class="auth-divider"><span>veya</span></div>
+{% endif %}
 
-<input
-name="username"
-placeholder="Kullanıcı Adı"
-required>
+<form method="post" class="auth-form">
 
-<input
-type="password"
-name="password"
-placeholder="Şifre"
-required>
+<input type="email" name="email" placeholder="E-posta adresiniz" required>
+<input type="password" name="password" placeholder="Kip Asistan giriş şifreniz" required>
+<input type="password" name="password2" placeholder="Şifre tekrar" required>
 
-<button
-class="btn btn-blue"
-type="submit"
-style="width:100%;">
-
-Kayıt Ol
-
-</button>
+<button class="btn btn-blue btn-block" type="submit">Kayıt Ol</button>
 
 </form>
 
-<p style="text-align:center;margin-top:20px;">
+<p class="register-note">Mail hesaplarınızı kayıt sonrası Mail sayfasından ekleyebilirsiniz.</p>
 
-<a href="/login">
-
-Zaten hesabın var mı? Giriş Yap
-
-</a>
-
+<p class="auth-footer-link">
+<a href="{{ url_for('auth.login') }}">Zaten hesabın var mı? Giriş Yap</a>
 </p>
 
+</div>
 </div>
 
 {% endblock %}

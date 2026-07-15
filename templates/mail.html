@@ -1,55 +1,587 @@
-{% extends "base.html" %}
+{% extends "mail_layout.html" %}
 
 {% block content %}
 
-<div class="layout" style="justify-content:center;overflow-y:auto;padding:20px;">
+<div class="gmail-app">
 
-    <div class="card" style="max-width:900px;width:100%;">
+    <!-- Üst Bar -->
+    <header class="gmail-header">
 
-        <h2>E-Posta Asistanı</h2>
-
-        <a href="/">
-            <button class="btn btn-blue">
-                Sohbete Dön
+        <div class="header-left">
+            <button class="icon-btn menu-btn" type="button" title="Menü">
+                <span class="material-icons-outlined">menu</span>
             </button>
-        </a>
-
-        {% if error %}
-        <div class="error">
-            {{ error }}
+            <a href="/mail" class="gmail-logo">
+                <span class="logo-icon material-icons-outlined">mail</span>
+                <span class="logo-text">Kip Asistan Mail</span>
+            </a>
         </div>
-        {% endif %}
 
-        {{ folder_menu|safe }}
-
-        <form method="get" action="/mail" style="margin-bottom:20px;">
-
-            <input
-                type="hidden"
-                name="folder"
-                value="{{ folder }}">
-
+        <form class="gmail-search" method="get" action="/mail">
+            <input type="hidden" name="folder" value="{{ folder }}">
+            {% if active_account_id %}
+            <input type="hidden" name="account" value="{{ active_account_id }}">
+            {% endif %}
+            <button class="search-btn" type="submit" title="Ara">
+                <span class="material-icons-outlined">search</span>
+            </button>
             <input
                 type="text"
                 name="search"
+                placeholder="Postada ara"
                 value="{{ search }}"
-                placeholder="🔍 Mail ara..."
-                style="
-                    width:100%;
-                    padding:10px;
-                    border-radius:8px;
-                    border:1px solid #cbd5e1;
-                    box-sizing:border-box;
-                ">
-
+                autocomplete="off">
+            {% if search %}
+            <a class="search-clear" href="/mail?folder={{ folder }}" title="Aramayı temizle">
+                <span class="material-icons-outlined">close</span>
+            </a>
+            {% endif %}
         </form>
 
-        {{ ai_preview_html|safe }}
+        <div class="header-right">
+            <a href="/" class="icon-btn" title="Sohbete dön">
+                <span class="material-icons-outlined">chat</span>
+            </a>
+            <a href="/logout" class="icon-btn" title="Çıkış">
+                <span class="material-icons-outlined">logout</span>
+            </a>
+            <div class="user-avatar">{{ session.user[:1]|upper }}</div>
+        </div>
 
-        {{ mail_items_html|safe }}
+    </header>
+
+    <div class="gmail-body">
+
+        <!-- Sol Kenar Çubuğu -->
+        <aside class="gmail-sidebar" id="gmail-sidebar">
+
+            <div class="account-switcher">
+                <div class="account-switcher-head">
+                    <span class="material-icons-outlined">alternate_email</span>
+                    <span class="account-switcher-title">Bağlı Mail Hesapları</span>
+                    <button class="icon-btn account-add-btn" type="button" id="account-add-btn" title="Hesap ekle">
+                        <span class="material-icons-outlined">add</span>
+                    </button>
+                </div>
+
+                <p class="account-switcher-note">Giriş hesabınızdan bağımsız — istediğiniz kadar mail ekleyin.</p>
+
+                <div class="account-list">
+                    {% for acc in mail_accounts %}
+                    <a
+                        href="/mail?folder={{ folder }}&account={{ acc.id }}{% if search %}&search={{ search }}{% endif %}"
+                        class="account-item{% if acc.id == active_account_id %} active{% endif %}">
+                        <span class="account-item-email">{{ acc.label }}</span>
+                        <span class="account-item-addr">{{ acc.email }}</span>
+                    </a>
+                    {% else %}
+                    <p class="account-empty">Henüz hesap yok</p>
+                    {% endfor %}
+                </div>
+
+                {% if active_account and mail_accounts|length > 1 %}
+                <form method="post" class="account-remove-form" onsubmit="return confirm('Bu mail hesabını silmek istediğinize emin misiniz?');">
+                    <input type="hidden" name="islem" value="hesap_sil">
+                    <input type="hidden" name="account_id" value="{{ active_account_id }}">
+                    <button type="submit" class="account-remove-btn">Aktif hesabı kaldır</button>
+                </form>
+                {% endif %}
+            </div>
+
+            <button class="compose-btn" type="button" id="compose-btn">
+                <span class="material-icons-outlined">edit</span>
+                <span>Yaz</span>
+            </button>
+
+            <nav class="folder-nav">
+                {% for f in folders %}
+                <a
+                    href="/mail?folder={{ f.id }}{% if active_account_id %}&account={{ active_account_id }}{% endif %}{% if search %}&search={{ search }}{% endif %}"
+                    class="folder-link{% if folder == f.id %} active{% endif %}">
+                    <span class="material-icons-outlined">{{ f.icon }}</span>
+                    <span class="folder-label">{{ f.label }}</span>
+                </a>
+                {% endfor %}
+            </nav>
+
+            <div class="sidebar-bottom">
+                <button class="settings-btn" type="button" id="settings-btn">
+                    <span class="material-icons-outlined">settings</span>
+                    <span>Ayarlar</span>
+                </button>
+            </div>
+
+        </aside>
+
+        <!-- Ana İçerik -->
+        <main class="gmail-main">
+
+            <!-- Mail Listesi -->
+            <section class="gmail-list-panel">
+
+                <div class="list-toolbar">
+                    <div class="toolbar-left">
+                        <label class="checkbox-wrap" title="Tümünü seç">
+                            <input type="checkbox" id="select-all">
+                            <span class="checkmark"></span>
+                        </label>
+                        <button class="icon-btn" type="button" title="Yenile" onclick="location.reload()">
+                            <span class="material-icons-outlined">refresh</span>
+                        </button>
+                        <button class="icon-btn restore-btn list-restore-btn" type="button" title="Spam değil — gelen kutusuna taşı" id="list-unspam-btn" hidden>
+                            <span class="material-icons-outlined">move_to_inbox</span>
+                        </button>
+                        <button class="icon-btn restore-btn list-restore-btn" type="button" title="Çöp kutusundan geri al" id="list-restore-trash-btn" hidden>
+                            <span class="material-icons-outlined">restore_from_trash</span>
+                        </button>
+                        <button class="icon-btn restore-btn list-restore-btn" type="button" title="Spam ve çöpteki tüm mailleri gelen kutusuna al" id="list-recover-all-btn">
+                            <span class="material-icons-outlined">unarchive</span>
+                        </button>
+                        <button class="icon-btn" type="button" title="Diğer">
+                            <span class="material-icons-outlined">more_vert</span>
+                        </button>
+                    </div>
+                    <div class="toolbar-right">
+                        <span class="mail-count">{{ mailler|length }} mail</span>
+                        <span class="folder-title">{{ folder_label }}</span>
+                    </div>
+                </div>
+
+                {% if error %}
+                <div class="gmail-alert error">
+                    <span class="material-icons-outlined">error_outline</span>
+                    {{ error }}
+                </div>
+                {% endif %}
+
+                {% if success_message %}
+                <div class="gmail-alert success">
+                    <span class="material-icons-outlined">check_circle</span>
+                    {{ success_message }}
+                </div>
+                {% endif %}
+
+                <div class="gmail-list" id="gmail-list">
+
+                    {% if mailler %}
+
+                        {% for m in mailler %}
+                        <div
+                            class="gmail-row{% if m.thread_count and m.thread_count > 1 %} is-thread{% endif %}"
+                            data-mail-id="{{ m.id }}"
+                            data-thread-ids="{{ (m.thread_ids or [m.id])|join(',') }}"
+                            tabindex="0">
+
+                            <div class="row-check">
+                                <label class="checkbox-wrap">
+                                    <input type="checkbox" class="mail-check">
+                                    <span class="checkmark"></span>
+                                </label>
+                            </div>
+
+                            <button class="star-btn" type="button" title="Yıldızla">
+                                <span class="material-icons-outlined">star_border</span>
+                            </button>
+
+                            <div class="row-sender">{{ m.sender_display }}</div>
+
+                            <div class="row-content">
+                                <span class="row-subject">{{ m.subject or "Konu yok" }}</span>
+                                {% if m.thread_count and m.thread_count > 1 %}
+                                <span class="thread-count">{{ m.thread_count }}</span>
+                                {% endif %}
+                                <span class="row-separator">-</span>
+                                <span class="row-snippet">{{ m.content[:80] }}</span>
+                            </div>
+
+                            <div class="row-date">{{ m.date }}</div>
+
+                        </div>
+                        {% endfor %}
+
+                    {% else %}
+
+                        <div class="empty-state">
+                            <span class="material-icons-outlined empty-icon">mail_outline</span>
+                            <p>Bu klasörde mail yok.</p>
+                        </div>
+
+                    {% endif %}
+
+                </div>
+
+            </section>
+
+            <!-- Okuma Paneli -->
+            <section class="gmail-reader" id="gmail-reader">
+
+                <div class="reader-empty" id="reader-empty"{% if ai_yaniti %} hidden{% endif %}>
+                    <div class="empty-illustration">
+                        <span class="material-icons-outlined">mark_email_unread</span>
+                    </div>
+                    <p>Bir mail seçin</p>
+                    <span class="empty-hint">Soldaki listeden bir mail seçtiğinizde içeriği burada görüntülenir.</span>
+                </div>
+
+                <div class="reader-content" id="reader-content" hidden>
+
+                    <div class="reader-toolbar">
+                        <button class="icon-btn reader-back-btn" type="button" id="reader-back" title="Listeye dön">
+                            <span class="material-icons-outlined">arrow_back</span>
+                        </button>
+                        <button class="icon-btn" type="button" title="Arşivle">
+                            <span class="material-icons-outlined">archive</span>
+                        </button>
+                        <button class="icon-btn spam-btn" type="button" title="Spam" id="spam-btn">
+                            <span class="material-icons-outlined">report</span>
+                        </button>
+                        <button class="icon-btn restore-btn" type="button" title="Spam değil — gelen kutusuna taşı" id="unspam-btn" hidden>
+                            <span class="material-icons-outlined">move_to_inbox</span>
+                        </button>
+                        <button class="icon-btn restore-btn" type="button" title="Çöp kutusundan geri al" id="restore-trash-btn" hidden>
+                            <span class="material-icons-outlined">restore_from_trash</span>
+                        </button>
+                        <button class="icon-btn" type="button" title="Sil">
+                            <span class="material-icons-outlined">delete</span>
+                        </button>
+                        <div class="toolbar-divider"></div>
+                        <button class="icon-btn" type="button" title="Okunmadı işaretle">
+                            <span class="material-icons-outlined">mark_email_unread</span>
+                        </button>
+                    </div>
+
+                    <div class="reader-header">
+                        <div class="reader-header-top">
+                            <h1 class="reader-subject" id="reader-subject"></h1>
+                            <div class="reader-translate-bar" id="reader-translate-bar">
+                                <span class="translate-label">Çeviri</span>
+                                <button type="button" class="translate-btn" data-lang="tr" title="Türkçe'ye çevir">Türkçe</button>
+                                <button type="button" class="translate-btn" data-lang="en" title="Translate to English">English</button>
+                                <button type="button" class="translate-btn" data-lang="de" title="Auf Deutsch übersetzen">Deutsch</button>
+                            </div>
+                        </div>
+                        <div class="reader-meta">
+                            <div class="sender-avatar" id="reader-avatar"></div>
+                            <div class="meta-info">
+                                <div class="meta-top">
+                                    <span class="meta-from" id="reader-from"></span>
+                                    <span class="meta-date" id="reader-date"></span>
+                                </div>
+                                <div class="meta-to">Kime: ben</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="reader-scroll-body">
+                        <div class="reader-body" id="reader-body"></div>
+                        <div class="reader-attachments" id="reader-attachments" hidden></div>
+
+                        <div class="reader-actions">
+                            <button class="action-btn action-btn-restore" type="button" id="unspam-action-btn" hidden>
+                                <span class="material-icons-outlined">move_to_inbox</span>
+                                Spam Değil
+                            </button>
+                            <button class="action-btn action-btn-restore" type="button" id="restore-trash-action-btn" hidden>
+                                <span class="material-icons-outlined">restore_from_trash</span>
+                                Gelen Kutusuna Taşı
+                            </button>
+                            <button class="action-btn" type="button" id="reply-btn">
+                                <span class="material-icons-outlined">reply</span>
+                                Yanıtla
+                            </button>
+                            <button class="action-btn" type="button">
+                                <span class="material-icons-outlined">forward</span>
+                                İlet
+                            </button>
+                        </div>
+
+                        <div class="ai-panel" id="ai-panel" hidden>
+                            <div class="ai-panel-header">
+                                <span class="material-icons-outlined">auto_awesome</span>
+                                <h3>Kip Asistan ile Yanıt Oluştur</h3>
+                            </div>
+                            <form method="post" class="ai-form">
+                                <input type="hidden" name="islem" value="olustur">
+                                <input type="hidden" name="mail_id" id="ai-mail-id">
+                            <input type="hidden" name="sender" id="ai-sender">
+                                <input type="hidden" name="subject" id="ai-subject">
+                                <input type="hidden" name="content" id="ai-content">
+                                <textarea
+                                    name="user_instruction"
+                                    placeholder="Özel talimat (isteğe bağlı): Daha kısa yaz, resmi dil kullan..."
+                                    rows="2"></textarea>
+                                <button type="submit" class="ai-generate-btn">
+                                    <span class="material-icons-outlined">auto_awesome</span>
+                                    Yanıt Oluştur
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="reader-content ai-draft-view" id="ai-draft-view"{% if not ai_yaniti %} hidden{% endif %}>
+                    {% if ai_yaniti %}
+                        {% include "partials/mail_ai_preview.html" %}
+                    {% endif %}
+                </div>
+
+            </section>
+
+        </main>
 
     </div>
 
 </div>
 
+<!-- Yaz Modal -->
+<div class="compose-overlay" id="compose-overlay" hidden>
+    <div class="compose-modal">
+        <div class="compose-header">
+            <span>Yeni İleti</span>
+            <button class="icon-btn compose-close" type="button" id="compose-close">
+                <span class="material-icons-outlined">close</span>
+            </button>
+        </div>
+        <form method="post" action="/mail" enctype="multipart/form-data" class="compose-form" id="compose-form">
+            <input type="hidden" name="islem" value="yeni_gonder">
+            <div class="compose-field-row compose-to-row">
+                <input type="text" name="to_email" id="compose-to-email" class="compose-to-input" placeholder="Kime" required autocomplete="off">
+                <aside class="compose-contact-panel" id="compose-contact-panel" hidden>
+                    <div class="compose-contact-title">Son kişiler</div>
+                    <div class="compose-contact-list" id="compose-contact-list"></div>
+                </aside>
+                <button type="button" class="compose-cc-toggle" id="compose-cc-toggle">Cc / Bcc</button>
+            </div>
+            <div class="compose-extra-fields" id="compose-extra-fields" hidden>
+                <input type="text" name="cc_email" placeholder="Cc">
+                <input type="text" name="bcc_email" placeholder="Bcc">
+            </div>
+            <input type="text" name="new_subject" placeholder="Konu">
+            <textarea name="new_body" placeholder="Mesajınızı yazın..." rows="8"></textarea>
+            <div id="compose-file-preview" class="compose-file-preview" hidden></div>
+            <div class="compose-footer">
+                <label class="attach-btn" title="Dosya ekle">
+                    <span class="material-icons-outlined">attach_file</span>
+                    Ekle
+                    <input type="file" name="attachment" id="compose-file" class="mail-attach-input" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" hidden>
+                </label>
+                <button type="submit" class="send-compose-btn">Gönder</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script id="mails-data" type="application/json">{{ mailler|tojson }}</script>
+<script id="mail-contacts-data" type="application/json">{{ mail_contacts|tojson }}</script>
+<script id="ai-draft-data" type="application/json">{{ {"yanit": ai_yaniti, "mail": secilen_mail}|tojson if ai_yaniti else "null" }}</script>
+
+<form id="spam-form" method="post" action="/mail?folder={{ folder }}{% if active_account_id %}&account={{ active_account_id }}{% endif %}" hidden>
+    <input type="hidden" name="islem" value="spam">
+    <input type="hidden" name="mail_id" id="spam-mail-id">
+    <input type="hidden" name="source_folder" value="{{ folder }}">
+    {% if active_account_id %}
+    <input type="hidden" name="account_id" value="{{ active_account_id }}">
+    {% endif %}
+</form>
+
+<form id="unspam-form" method="post" action="/mail?folder={{ folder }}{% if active_account_id %}&account={{ active_account_id }}{% endif %}" hidden>
+    <input type="hidden" name="islem" value="spam_cikar">
+    <input type="hidden" name="mail_id" id="unspam-mail-id">
+    <input type="hidden" name="mail_ids" id="unspam-mail-ids">
+    <input type="hidden" name="source_folder" value="{{ folder }}">
+    {% if active_account_id %}
+    <input type="hidden" name="account_id" value="{{ active_account_id }}">
+    {% endif %}
+</form>
+
+<form id="restore-trash-form" method="post" action="/mail?folder={{ folder }}{% if active_account_id %}&account={{ active_account_id }}{% endif %}" hidden>
+    <input type="hidden" name="islem" value="cop_kurtar">
+    <input type="hidden" name="mail_id" id="restore-trash-mail-id">
+    <input type="hidden" name="mail_ids" id="restore-trash-mail-ids">
+    <input type="hidden" name="source_folder" value="{{ folder }}">
+    {% if active_account_id %}
+    <input type="hidden" name="account_id" value="{{ active_account_id }}">
+    {% endif %}
+</form>
+
+<form id="recover-all-form" method="post" action="/mail?folder={{ folder }}{% if active_account_id %}&account={{ active_account_id }}{% endif %}" hidden>
+    <input type="hidden" name="islem" value="tumunu_geri_al">
+    {% if active_account_id %}
+    <input type="hidden" name="account_id" value="{{ active_account_id }}">
+    {% endif %}
+</form>
+
+<!-- Ayarlar Modal -->
+<div class="mail-dialog-overlay" id="settings-overlay" hidden>
+    <div class="mail-dialog" role="dialog" aria-labelledby="settings-title">
+        <div class="mail-dialog-header">
+            <div class="mail-dialog-title-wrap">
+                <span class="material-icons-outlined mail-dialog-icon">settings</span>
+                <div>
+                    <h2 class="mail-dialog-title" id="settings-title">Mail Ayarları</h2>
+                    <p class="mail-dialog-subtitle">Spam filtreleme ve gelen kutusu tercihleri</p>
+                </div>
+            </div>
+            <button class="icon-btn mail-dialog-close" type="button" id="settings-close" aria-label="Kapat">
+                <span class="material-icons-outlined">close</span>
+            </button>
+        </div>
+
+        <form method="post" class="settings-form" action="/mail?folder={{ folder }}{% if active_account_id %}&account={{ active_account_id }}{% endif %}">
+            <input type="hidden" name="islem" value="ayar_kaydet">
+            {% if active_account_id %}
+            <input type="hidden" name="account_id" value="{{ active_account_id }}">
+            {% endif %}
+
+            <div class="mail-dialog-body">
+            <div class="dialog-section">
+                <h3 class="dialog-section-title">Genel</h3>
+                <label class="dialog-field">
+                    <span class="dialog-label">Gelen kutusunda gösterilecek mail sayısı</span>
+                    <select name="inbox_fetch_count" class="dialog-input">
+                        {% for n in [10, 20, 30, 50, 100, 150, 200] %}
+                        <option value="{{ n }}"{% if mail_settings.inbox_fetch_count == n %} selected{% endif %}>{{ n }} mail</option>
+                        {% endfor %}
+                    </select>
+                </label>
+            </div>
+
+            <div class="dialog-section">
+                <h3 class="dialog-section-title">Gereksiz Posta (Spam)</h3>
+
+                <label class="dialog-check">
+                    <input type="checkbox" name="auto_spam_filter" value="1"{% if mail_settings.auto_spam_filter %} checked{% endif %}>
+                    <span>Otomatik spam filtrelemeyi etkinleştir</span>
+                </label>
+
+                <label class="dialog-check">
+                    <input type="checkbox" name="spam_move_to_folder" value="1"{% if mail_settings.spam_move_to_folder %} checked{% endif %}>
+                    <span>Spam mailleri otomatik olarak spam klasörüne taşı</span>
+                </label>
+
+                <label class="dialog-check">
+                    <input type="checkbox" name="spam_use_ai" value="1"{% if mail_settings.spam_use_ai %} checked{% endif %}>
+                    <span>Belirsiz maillerde yapay zeka analizi kullan</span>
+                </label>
+
+                <label class="dialog-field">
+                    <span class="dialog-label">Spam hassasiyeti</span>
+                    <select name="spam_sensitivity" id="spam-sensitivity" class="dialog-input">
+                        {% for key, preset in sensitivity_presets.items() %}
+                        <option value="{{ key }}"{% if mail_settings.spam_sensitivity == key %} selected{% endif %}>{{ preset.label }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <p class="dialog-hint" id="sensitivity-hint">{{ sensitivity_presets[mail_settings.spam_sensitivity].hint }}</p>
+
+                <label class="dialog-field" id="custom-threshold-wrap"{% if mail_settings.spam_sensitivity != 'custom' %} hidden{% endif %}>
+                    <span class="dialog-label">Özel eşik değeri: <strong id="threshold-value">{{ mail_settings.spam_threshold }}</strong></span>
+                    <input type="range" name="spam_threshold" id="spam-threshold" class="dialog-range" min="0" max="100" value="{{ mail_settings.spam_threshold }}">
+                </label>
+            </div>
+
+            <div class="dialog-section">
+                <h3 class="dialog-section-title">Gönderen Listeleri</h3>
+                <label class="dialog-field">
+                    <span class="dialog-label">Güvenilen gönderenler</span>
+                    <textarea name="trusted_senders" class="dialog-input dialog-textarea" rows="3" placeholder="Her satıra bir adres&#10;ornek@sirket.com">{{ mail_settings.trusted_senders }}</textarea>
+                </label>
+                <label class="dialog-field">
+                    <span class="dialog-label">Engellenen gönderenler</span>
+                    <textarea name="blocked_senders" class="dialog-input dialog-textarea" rows="3" placeholder="Her satıra bir adres&#10;spam@reklam.com">{{ mail_settings.blocked_senders }}</textarea>
+                </label>
+            </div>
+            </div>
+
+            <div class="mail-dialog-footer">
+                <button type="button" class="dialog-btn dialog-btn-secondary" id="settings-cancel">İptal</button>
+                <button type="submit" class="dialog-btn dialog-btn-primary">Ayarları Kaydet</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Hesap Ekle Modal -->
+<div class="mail-dialog-overlay" id="account-overlay" hidden>
+    <div class="mail-dialog mail-dialog-sm" role="dialog" aria-labelledby="account-title">
+        <div class="mail-dialog-header">
+            <div class="mail-dialog-title-wrap">
+                <span class="material-icons-outlined mail-dialog-icon">person_add</span>
+                <div>
+                    <h2 class="mail-dialog-title" id="account-title">Mail Hesabı Ekle</h2>
+                    <p class="mail-dialog-subtitle">Giriş hesabınızdan bağımsız yeni bir e-posta bağlayın</p>
+                </div>
+            </div>
+            <button class="icon-btn mail-dialog-close" type="button" id="account-close" aria-label="Kapat">
+                <span class="material-icons-outlined">close</span>
+            </button>
+        </div>
+
+        <form method="post" class="account-form">
+            <input type="hidden" name="islem" value="hesap_ekle">
+
+            <div class="mail-dialog-body">
+            <label class="dialog-field">
+                <span class="dialog-label">Görünen ad <span class="dialog-optional">(isteğe bağlı)</span></span>
+                <input type="text" name="account_label" class="dialog-input" placeholder="Örn: İş maili">
+            </label>
+
+            <label class="dialog-field">
+                <span class="dialog-label">E-posta adresi</span>
+                <input type="email" name="account_email" class="dialog-input" placeholder="ornek@gmail.com" required>
+            </label>
+
+            <label class="dialog-field">
+                <span class="dialog-label">E-posta sağlayıcısı</span>
+                <select name="mail_provider" id="account_provider" class="dialog-input">
+                    {% for key, preset in providers.items() %}
+                    <option value="{{ key }}">{{ preset.label }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+
+            <p class="dialog-hint" id="account-provider-hint">{{ providers.gmail.hint }}</p>
+
+            <label class="dialog-field">
+                <span class="dialog-label">E-posta / uygulama şifresi</span>
+                <input type="password" name="mail_password" class="dialog-input" placeholder="••••••••••••" required>
+            </label>
+
+            <div id="account-custom-fields" class="dialog-custom-fields" hidden>
+                <label class="dialog-field">
+                    <span class="dialog-label">IMAP sunucu</span>
+                    <input type="text" name="imap_server" class="dialog-input" placeholder="imap.ornek.com">
+                </label>
+                <label class="dialog-field">
+                    <span class="dialog-label">SMTP sunucu</span>
+                    <input type="text" name="smtp_server" class="dialog-input" placeholder="smtp.ornek.com">
+                </label>
+                <div class="dialog-port-row">
+                    <label class="dialog-field">
+                        <span class="dialog-label">IMAP port</span>
+                        <input type="number" name="imap_port" class="dialog-input" value="993">
+                    </label>
+                    <label class="dialog-field">
+                        <span class="dialog-label">SMTP port</span>
+                        <input type="number" name="smtp_port" class="dialog-input" value="587">
+                    </label>
+                </div>
+            </div>
+            </div>
+
+            <div class="mail-dialog-footer">
+                <button type="button" class="dialog-btn dialog-btn-secondary" id="account-cancel">İptal</button>
+                <button type="submit" class="dialog-btn dialog-btn-primary">Hesabı Ekle</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/mail.js') }}?v=32"></script>
+<script id="provider-data" type="application/json">{{ providers|tojson }}</script>
+<script id="sensitivity-data" type="application/json">{{ sensitivity_presets|tojson }}</script>
 {% endblock %}

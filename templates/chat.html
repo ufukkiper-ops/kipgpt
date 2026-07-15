@@ -6,17 +6,25 @@
 
     <div class="sidebar">
 
-        <h2>AI Asistan</h2>
+        <h2>Kip Asistan</h2>
 
         <div class="user-box">
-            <b>Kullanıcı:</b> {{ username }}
+            <b>{{ username }}</b>
         </div>
 
         <a class="new-chat" href="/new_chat">
             + Yeni Sohbet
         </a>
 
-        <div class="chat-list">
+        <div class="chat-search-wrap">
+            <input
+                type="text"
+                id="chat-search"
+                placeholder="Sohbet ara..."
+                autocomplete="off">
+        </div>
+
+        <div class="chat-list" id="chat-list">
             {{ chat_list_html|safe }}
         </div>
 
@@ -26,14 +34,14 @@
 
         <div class="topbar">
 
-            <div>
-                <b>Aktif Sohbet:</b> {{ active_chat }}
+            <div class="active-chat-title">
+                <b>{{ active_title }}</b>
             </div>
 
             <div class="right-buttons">
 
                 <a href="/mail">
-                    <button class="btn btn-green">📧 Mailler</button>
+                    <button class="btn btn-green" type="button">📧 Mailler</button>
                 </a>
 
                 <form method="post" action="/clear_chat" style="margin:0;">
@@ -43,7 +51,7 @@
                 </form>
 
                 <a href="/logout">
-                    <button class="btn btn-blue">
+                    <button class="btn btn-blue" type="button">
                         Çıkış
                     </button>
                 </a>
@@ -56,29 +64,31 @@
             {{ messages_html|safe }}
         </div>
 
+        <div id="file-preview-bar" class="file-preview-bar" hidden>
+            <div id="file-preview-content"></div>
+            <button type="button" id="file-preview-clear" class="file-preview-clear">×</button>
+        </div>
+
         <div class="bottom">
 
             <form id="chat-form"
                   class="input-container"
                   method="post"
                   action="/"
-                  onsubmit="sendTextMessage(event)"
+                  onsubmit="return false;"
                   enctype="multipart/form-data">
 
-                <label for="file-input"
-                       style="cursor:pointer;font-size:28px;color:#3b82f6;font-weight:bold;padding:0 5px;">
-                    +
-                </label>
+                <button type="button" class="file-upload-btn" id="file-upload-btn" title="Dosya ekle">
+                    <span class="file-upload-icon">📎</span>
+                </button>
 
                 <input id="file-input"
                        type="file"
-                       name="image"
-                       accept="image/*,application/pdf"
-                       style="display:none;">
+                       name="file"
+                       accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                       hidden>
 
-                <input type="hidden"
-                       name="action"
-                       value="text">
+                <input type="hidden" name="action" value="text">
 
                 <input id="chat-input"
                        type="text"

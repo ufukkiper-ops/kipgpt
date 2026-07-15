@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 
+{% block body_class %}auth-page{% endblock %}
+
 {% block content %}
 
+<div class="auth-shell">
 <div class="card">
 
 <h2>Giriş Yap</h2>
@@ -10,40 +13,28 @@
 <div class="error">{{ error }}</div>
 {% endif %}
 
-<form method="post">
+{% if google_enabled %}
+<a href="{{ url_for('auth.google_auth_start', action='login') }}" class="btn-google btn-google-primary">
+    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" width="20" height="20">
+    Google ile Giriş Yap
+</a>
+<div class="auth-divider"><span>veya</span></div>
+{% endif %}
 
-<input
-name="username"
-placeholder="Kullanıcı Adı"
-required>
+<form method="post" class="auth-form">
 
-<input
-type="password"
-name="password"
-placeholder="Şifre"
-required>
+<input type="text" name="email" placeholder="E-posta veya kullanıcı adı" required autocomplete="username">
+<input type="password" name="password" placeholder="Şifre" required autocomplete="current-password">
 
-<button
-class="btn btn-blue"
-type="submit"
-style="width:100%;">
-
-Giriş Yap
-
-</button>
+<button class="btn btn-blue btn-block" type="submit">Giriş Yap</button>
 
 </form>
 
-<p style="text-align:center;margin-top:20px;">
-
-<a href="/register">
-
-Hesabın yok mu? Kayıt Ol
-
-</a>
-
+<p class="auth-footer-link">
+<a href="{{ url_for('auth.register') }}">Hesabın yok mu? Kayıt Ol</a>
 </p>
 
+</div>
 </div>
 
 {% endblock %}

@@ -1,0 +1,121 @@
+<div class="reader-header">
+
+    <h1 class="reader-subject">Kip Asistan Taslak Yanıtı</h1>
+
+    <div class="reader-meta">
+
+        <div class="sender-avatar ai-avatar">AI</div>
+
+        <div class="meta-info">
+
+            <div class="meta-top">
+
+                <span class="meta-from">Alıcı: {{ secilen_mail.sender }}</span>
+
+            </div>
+
+            <div class="meta-to">Konu: Re: {{ secilen_mail.subject }}</div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<div class="reader-scroll-body">
+
+    <form method="post" class="ai-reply-form" enctype="multipart/form-data">
+
+        <input type="hidden" name="islem" value="gonder">
+
+        <input type="hidden" name="sender" value="{{ secilen_mail.sender }}">
+
+        <input type="hidden" name="subject" value="{{ secilen_mail.subject }}">
+
+        <div class="compose-field-row reply-field-row">
+            <input type="text" value="{{ secilen_mail.sender }}" readonly class="compose-readonly">
+            <button type="button" class="compose-cc-toggle" id="reply-cc-toggle">Cc / Bcc</button>
+        </div>
+        <div class="compose-extra-fields" id="reply-extra-fields" hidden>
+            <input type="text" name="cc_email" placeholder="Cc">
+            <input type="text" name="bcc_email" placeholder="Bcc">
+        </div>
+
+        <textarea name="final_reply" class="ai-editor" rows="8">{{ ai_yaniti }}</textarea>
+
+        <div id="reply-attach-preview" class="compose-file-preview" hidden></div>
+
+        <div class="ai-reply-actions">
+
+            <label class="attach-btn" title="Dosya ekle">
+
+                <span class="material-icons-outlined">attach_file</span>
+
+                Ekle
+
+                <input type="file" name="attachment" class="mail-attach-input" id="reply-file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" hidden>
+
+            </label>
+
+            <button type="submit" class="action-btn send-reply-btn">
+
+                <span class="material-icons-outlined">send</span>
+
+                Gönder
+
+            </button>
+
+        </div>
+
+    </form>
+
+
+
+    <div class="ai-panel">
+
+        <div class="ai-panel-header">
+
+            <span class="material-icons-outlined">edit</span>
+
+            <h3>Taslağı Yeniden Düzenle</h3>
+
+        </div>
+
+        <form method="post" class="ai-form">
+
+            <input type="hidden" name="islem" value="revize_et">
+
+            <input type="hidden" name="sender" value="{{ secilen_mail.sender }}">
+
+            <input type="hidden" name="subject" value="{{ secilen_mail.subject }}">
+
+            <input type="hidden" name="content" value="{{ secilen_mail.content }}">
+
+            <input type="hidden" name="current_draft" value="{{ ai_yaniti }}">
+
+            <textarea
+
+                name="revize_notu"
+
+                placeholder="Nasıl değiştirilsin? (Örn: Daha kısa yaz, toplantı saatini 14:00 yap...)"
+
+                rows="2"
+
+                required></textarea>
+
+            <button type="submit" class="ai-generate-btn revise-btn">
+
+                <span class="material-icons-outlined">refresh</span>
+
+                Taslağı Güncelle
+
+            </button>
+
+        </form>
+
+    </div>
+
+</div>
+
