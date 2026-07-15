@@ -33,8 +33,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -60,7 +58,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
@@ -510,26 +507,17 @@ fun ChatScreen(
                             contentPadding = PaddingValues(vertical = 4.dp),
                         ) {
                             items(messages) { message ->
-                                MessageBubble(message, speechHelper)
+                                ChatMessageBubble(message, speechHelper)
                             }
                             if (sending.value) {
                                 item {
-                                    Row(
+                                    Box(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .padding(vertical = 4.dp),
-                                        horizontalArrangement = Arrangement.Start,
+                                        contentAlignment = Alignment.CenterStart,
                                     ) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.padding(8.dp),
-                                            strokeWidth = 2.dp,
-                                        )
-                                        Text(
-                                            "Yanıt yazılıyor...",
-                                            modifier = Modifier.padding(top = 12.dp),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
+                                        AiThinkingStatus()
                                     }
                                 }
                             }
@@ -567,76 +555,6 @@ private fun PendingFileChip(name: String, onClear: () -> Unit) {
             )
             IconButton(onClick = onClear, modifier = Modifier.size(28.dp)) {
                 Icon(Icons.Default.Close, contentDescription = "Kaldır", modifier = Modifier.size(16.dp))
-            }
-        }
-    }
-}
-
-@Composable
-private fun MessageBubble(message: ChatMessage, speechHelper: SpeechHelper) {
-    val isUser = message.role == "user"
-    val bg = if (isUser) MaterialTheme.colorScheme.primary else Color(0xFFE8EAED)
-    val fg = if (isUser) Color.White else Color(0xFF202124)
-    val align = if (isUser) Alignment.CenterEnd else Alignment.CenterStart
-
-    Box(
-        modifier = Modifier.fillMaxWidth(),
-        contentAlignment = align,
-    ) {
-        Row(
-            verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
-        ) {
-            if (!isUser && speechHelper.isSpeakAvailable()) {
-                IconButton(
-                    onClick = {
-                        if (speechHelper.isSpeaking()) {
-                            speechHelper.stopSpeaking()
-                        } else {
-                            speechHelper.speak(message.content)
-                        }
-                    },
-                    modifier = Modifier.size(36.dp),
-                ) {
-                    Icon(
-                        if (speechHelper.isSpeaking()) Icons.Default.Stop else Icons.Default.VolumeUp,
-                        contentDescription = "Dinle",
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                }
-            }
-            Column(
-                modifier = Modifier
-                    .widthIn(max = 300.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(bg)
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
-            ) {
-                message.file?.let { file ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(bottom = 6.dp),
-                    ) {
-                        Icon(
-                            Icons.Default.InsertDriveFile,
-                            contentDescription = null,
-                            tint = fg.copy(alpha = 0.9f),
-                            modifier = Modifier.size(16.dp),
-                        )
-                        Text(
-                            file.name,
-                            color = fg.copy(alpha = 0.9f),
-                            style = MaterialTheme.typography.labelMedium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(start = 6.dp),
-                        )
-                    }
-                }
-                Text(
-                    text = message.content,
-                    color = fg,
-                )
             }
         }
     }
