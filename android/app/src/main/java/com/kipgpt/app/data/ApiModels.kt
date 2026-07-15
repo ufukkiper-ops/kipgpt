@@ -30,7 +30,17 @@ data class ChatSummary(
 
 data class ChatsResponse(val active_chat: String, val chats: List<ChatSummary>)
 
-data class ChatMessage(val role: String, val content: String)
+data class ChatFileMeta(
+    val name: String = "",
+    val type: String = "other",
+    val icon: String = "",
+)
+
+data class ChatMessage(
+    val role: String,
+    val content: String,
+    val file: ChatFileMeta? = null,
+)
 
 data class MessagesResponse(
     val chat_id: String,
@@ -44,6 +54,7 @@ data class SendResponse(
     val answer: String,
     val chat_title: String,
     val messages: List<ChatMessage>,
+    val file: ChatFileMeta? = null,
 )
 
 data class MailFolder(val id: String, val label: String, val icon: String)

@@ -7,8 +7,13 @@ from services.mail_settings import get_mail_settings
 from services.mail_ui import FOLDERS, download_mail_attachment, filter_mails, generate_ai_mail_reply, load_folder_mails, load_single_mail, mail_content_preview
 from services.translate_service import translate_mail_content
 from mail import send_reply_mail
-from services.chat_service import generate_chat_response, generate_chat_title, get_client
-from storage import load_data, save_data
+from services.chat_service import (
+    analyze_uploaded_file,
+    generate_chat_response,
+    generate_chat_title,
+    get_client,
+)
+from storage import load_data, next_chat_id, save_data
 from users import (
     authenticate_local_user,
     email_exists,
@@ -43,6 +48,7 @@ def _serialize_message(message):
         item["file"] = {
             "name": file_meta.get("name", ""),
             "type": file_meta.get("type", "other"),
+            "icon": file_meta.get("icon", ""),
         }
     return item
 
@@ -199,7 +205,7 @@ def api_list_chats(user_id):
 def api_new_chat(user_id):
     data = _user_chat_data(user_id)
     chats = data[user_id].setdefault("chats", {"chat1": []})
-    new_id = f"chat{len(chats) + 1}"
+    new_id = next_chat_id(chats)
     chats[new_id] = []
     data[user_id]["active_chat"] = new_id
     save_data(data)
@@ -234,11 +240,6 @@ def api_chat_messages(user_id, chat_id):
 @mobile_api_bp.route("/chats/<chat_id>/messages", methods=["POST"])
 @require_api_user
 def api_send_message(user_id, chat_id):
-    payload = request.get_json(silent=True) or {}
-    text = (payload.get("text") or "").strip()
-    if not text:
-        return jsonify({"error": "Mesaj boş olamaz."}), 400
-
     if get_client() is None:
         return jsonify({"error": "Sunucuda OPENAI_API_KEY ayarlı değil."}), 400
 
@@ -248,32 +249,80 @@ def api_send_message(user_id, chat_id):
         return jsonify({"error": "Sohbet bulunamadı."}), 404
 
     gecmis = chats[chat_id]
-    gecmis.append({"role": "user", "content": text})
-
-    try:
-        answer = generate_chat_response([
-            {"role": m["role"], "content": m["content"]}
-            for m in gecmis
-        ])
-    except Exception as e:
-        return jsonify({"error": f"AI hatası: {e}"}), 500
-
-    gecmis.append({"role": "assistant", "content": answer})
     titles = data[user_id].setdefault("chat_titles", {})
-    if chat_id not in titles:
+    uploaded = request.files.get("file") or request.files.get("image")
+    has_file = bool(uploaded and uploaded.filename)
+
+    if has_file:
+        payload_text = (
+            request.form.get("text")
+            or request.form.get("soru")
+            or ""
+        ).strip()
+        prompt = payload_text or "Bu dosyayı detaylı analiz et ve Türkçe yorumla."
         try:
-            titles[chat_id] = generate_chat_title(text)
-        except Exception:
-            titles[chat_id] = text[:30]
+            answer, file_meta = analyze_uploaded_file(uploaded, prompt)
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+        except Exception as e:
+            return jsonify({"error": f"Dosya analizi hatası: {e}"}), 500
+
+        user_message = {
+            "role": "user",
+            "content": payload_text or f"[DOSYA] {file_meta['name']}",
+            "file": file_meta,
+        }
+        if file_meta.get("preview"):
+            user_message["image"] = file_meta["preview"]
+
+        gecmis.append(user_message)
+        gecmis.append({"role": "assistant", "content": answer})
+
+        if chat_id not in titles:
+            titles[chat_id] = file_meta["name"][:30]
+    else:
+        payload = request.get_json(silent=True) or {}
+        text = (
+            payload.get("text")
+            or request.form.get("text")
+            or request.form.get("soru")
+            or ""
+        ).strip()
+        if not text:
+            return jsonify({"error": "Mesaj boş olamaz."}), 400
+
+        gecmis.append({"role": "user", "content": text})
+        try:
+            answer = generate_chat_response([
+                {"role": m["role"], "content": m["content"]}
+                for m in gecmis
+            ])
+        except Exception as e:
+            return jsonify({"error": f"AI hatası: {e}"}), 500
+
+        gecmis.append({"role": "assistant", "content": answer})
+        if chat_id not in titles:
+            try:
+                titles[chat_id] = generate_chat_title(text)
+            except Exception:
+                titles[chat_id] = text[:30]
 
     data[user_id]["active_chat"] = chat_id
     save_data(data)
 
-    return jsonify({
+    response = {
         "answer": answer,
         "chat_title": titles.get(chat_id, "Yeni Sohbet"),
         "messages": [_serialize_message(m) for m in gecmis[-2:]],
-    })
+    }
+    last_user = gecmis[-2] if len(gecmis) >= 2 else None
+    if last_user and last_user.get("file"):
+        response["file"] = {
+            "name": last_user["file"].get("name", ""),
+            "type": last_user["file"].get("type", "other"),
+            "icon": last_user["file"].get("icon", ""),
+        }
+    return jsonify(response)
 
 
 @mobile_api_bp.route("/chats/<chat_id>", methods=["DELETE"])
@@ -315,7 +364,7 @@ def api_mail_list(user_id):
             mail_config,
             count=mobile_count,
             settings=settings,
-            filter_spam=False,
+            filter_spam=True,
         )
         mailler = filter_mails(mailler, search)
     except Exception as e:

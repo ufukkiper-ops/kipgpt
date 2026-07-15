@@ -1,15 +1,19 @@
 package com.kipgpt.app.data
 
 import okhttp3.Interceptor
+import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
+import okhttp3.RequestBody
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.PUT
+import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
 import retrofit2.http.Streaming
@@ -40,6 +44,14 @@ interface KipGptApi {
 
     @POST("chats/{id}/messages")
     suspend fun sendMessage(@Path("id") id: String, @Body body: SendRequest): SendResponse
+
+    @Multipart
+    @POST("chats/{id}/messages")
+    suspend fun sendMessageWithFile(
+        @Path("id") id: String,
+        @Part("text") text: RequestBody,
+        @Part file: MultipartBody.Part,
+    ): SendResponse
 
     @DELETE("chats/{id}")
     suspend fun clearChat(@Path("id") id: String): Map<String, Boolean>

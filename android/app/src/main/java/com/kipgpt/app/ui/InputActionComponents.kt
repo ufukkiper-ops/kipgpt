@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Refresh
@@ -19,6 +20,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -158,6 +160,26 @@ private fun RoundActionIcon(
 }
 
 @Composable
+fun RoundAttachButton(
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    IconButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier.size(InputActionButtonSize),
+    ) {
+        Icon(
+            imageVector = Icons.Default.AttachFile,
+            contentDescription = "Dosya ekle",
+            modifier = Modifier.size(InputActionIconSize),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
 fun ChatStyleInputBar(
     value: String,
     onValueChange: (String) -> Unit,
@@ -169,6 +191,7 @@ fun ChatStyleInputBar(
     onMicClick: () -> Unit,
     onSendClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onAttachClick: (() -> Unit)? = null,
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -182,6 +205,12 @@ fun ChatStyleInputBar(
                 .padding(start = 4.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
             verticalAlignment = Alignment.Bottom,
         ) {
+            if (onAttachClick != null) {
+                RoundAttachButton(
+                    enabled = enabled,
+                    onClick = onAttachClick,
+                )
+            }
             TextField(
                 value = value,
                 onValueChange = onValueChange,

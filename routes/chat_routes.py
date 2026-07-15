@@ -14,7 +14,7 @@ from services.chat_service import (
 
 )
 
-from storage import load_data, save_data
+from storage import load_data, next_chat_id, save_data
 
 from html_helpers import render_chat_list, render_messages
 
@@ -86,7 +86,7 @@ def new_chat():
 
     chats = data[username].setdefault("chats", {"chat1": []})
 
-    new_id = f"chat{len(chats) + 1}"
+    new_id = next_chat_id(chats)
 
     chats[new_id] = []
 
