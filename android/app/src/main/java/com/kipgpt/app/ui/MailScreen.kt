@@ -29,6 +29,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.VolumeUp
@@ -41,6 +42,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -71,10 +73,12 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.kipgpt.app.data.ApiClient
 import com.kipgpt.app.data.AttachmentSaver
+import com.kipgpt.app.data.MailAiComposeRequest
 import com.kipgpt.app.data.MailAiReplyRequest
 import com.kipgpt.app.data.MailAttachment
 import com.kipgpt.app.data.MailFolder
 import com.kipgpt.app.data.MailItem
+import com.kipgpt.app.data.MailSendNewRequest
 import com.kipgpt.app.data.MailSendReplyRequest
 import com.kipgpt.app.data.SpeechHelper
 import com.kipgpt.app.data.TranslateRequest
@@ -90,6 +94,7 @@ fun MailScreen(
     val mails = remember { mutableStateListOf<MailItem>() }
     val selectedFolder = remember { mutableStateOf("inbox") }
     val selectedMail = remember { mutableStateOf<MailItem?>(null) }
+    val composing = remember { mutableStateOf(false) }
     val search = remember { mutableStateOf("") }
     val account = remember { mutableStateOf("") }
     val loading = remember { mutableStateOf(false) }
@@ -130,9 +135,22 @@ fun MailScreen(
     }
 
     LaunchedEffect(selectedFolder.value) {
-        if (selectedMail.value == null) {
+        if (selectedMail.value == null && !composing.value) {
             loadMailsNow()
         }
+    }
+
+    if (composing.value) {
+        ComposeMailScreen(
+            apiClient = apiClient,
+            onBack = { composing.value = false },
+            onSent = {
+                composing.value = false
+                loadMails()
+            },
+            modifier = modifier,
+        )
+        return
     }
 
     if (selectedMail.value != null) {
@@ -169,6 +187,11 @@ fun MailScreen(
                     }
                 },
             )
+        },
+        floatingActionButton = {
+            FloatingActionButton(onClick = { composing.value = true }) {
+                Icon(Icons.Default.Edit, contentDescription = "Yeni mail")
+            }
         },
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
@@ -886,6 +909,240 @@ fun MailDetailScreen(
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ComposeMailScreen(
+    apiClient: ApiClient,
+    onBack: () -> Unit,
+    onSent: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val toEmail = remember { mutableStateOf("") }
+    val subject = remember { mutableStateOf("") }
+    val body = remember { mutableStateOf("") }
+    val aiInstruction = remember { mutableStateOf("") }
+    val showAiPanel = remember { mutableStateOf(false) }
+    val aiLoading = remember { mutableStateOf(false) }
+    val sending = remember { mutableStateOf(false) }
+    val listening = remember { mutableStateOf(false) }
+    val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val speechHelper = remember { SpeechHelper(context) }
+
+    DisposableEffect(speechHelper) {
+        onDispose { speechHelper.shutdown() }
+    }
+
+    fun generateAiCompose() {
+        scope.launch {
+            val instruction = aiInstruction.value.trim()
+            val currentBody = body.value.trim()
+            if (instruction.isBlank() && currentBody.isBlank() && subject.value.isBlank()) {
+                snackbar.showSnackbar("AI için bir ipucu yazın")
+                return@launch
+            }
+            aiLoading.value = true
+            try {
+                val response = apiClient.api.generateMailAiCompose(
+                    MailAiComposeRequest(
+                        to_email = toEmail.value.trim(),
+                        subject = subject.value.trim(),
+                        user_instruction = if (currentBody.isBlank()) instruction else "",
+                        current_draft = currentBody,
+                        revize_notu = if (currentBody.isNotBlank()) {
+                            instruction.ifBlank { "Taslağı iyileştir, daha net ve profesyonel yaz." }
+                        } else {
+                            ""
+                        },
+                    ),
+                )
+                body.value = response.draft
+                aiInstruction.value = ""
+            } catch (e: Exception) {
+                snackbar.showSnackbar(e.message ?: "AI taslağı oluşturulamadı")
+            } finally {
+                aiLoading.value = false
+            }
+        }
+    }
+
+    fun sendMail() {
+        scope.launch {
+            val to = toEmail.value.trim()
+            val text = body.value.trim()
+            if (to.isBlank()) {
+                snackbar.showSnackbar("Alıcı gerekli")
+                return@launch
+            }
+            if (text.isBlank()) {
+                snackbar.showSnackbar("Mail metni boş")
+                return@launch
+            }
+            sending.value = true
+            try {
+                val response = apiClient.api.sendNewMail(
+                    MailSendNewRequest(
+                        to_email = to,
+                        subject = subject.value.trim(),
+                        body = text,
+                    ),
+                )
+                snackbar.showSnackbar(response.message)
+                onSent()
+            } catch (e: Exception) {
+                snackbar.showSnackbar(e.message ?: "Gönderilemedi")
+            } finally {
+                sending.value = false
+            }
+        }
+    }
+
+    Scaffold(
+        modifier = modifier,
+        topBar = {
+            TopAppBar(
+                title = { Text("Yeni İleti") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri")
+                    }
+                },
+                actions = {
+                    IconButton(
+                        onClick = { showAiPanel.value = !showAiPanel.value },
+                        enabled = !aiLoading.value && !sending.value,
+                    ) {
+                        Icon(Icons.Default.AutoAwesome, contentDescription = "AI ile yaz")
+                    }
+                },
+            )
+        },
+        snackbarHost = { SnackbarHost(snackbar) },
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp)
+                .navigationBarsPadding(),
+        ) {
+            OutlinedTextField(
+                value = toEmail.value,
+                onValueChange = { toEmail.value = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Kime") },
+                singleLine = true,
+                enabled = !sending.value,
+            )
+            Spacer(Modifier.height(10.dp))
+            OutlinedTextField(
+                value = subject.value,
+                onValueChange = { subject.value = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Konu") },
+                singleLine = true,
+                enabled = !sending.value,
+            )
+            Spacer(Modifier.height(10.dp))
+            OutlinedTextField(
+                value = body.value,
+                onValueChange = { body.value = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Mesaj") },
+                minLines = 8,
+                enabled = !sending.value && !aiLoading.value,
+            )
+
+            if (showAiPanel.value) {
+                Spacer(Modifier.height(16.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
+                    ),
+                ) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text(
+                            "KipGPT ile Mail Yaz",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "İpucu yazın; AI yeni mail metnini oluştursun.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        if (aiLoading.value) {
+                            AiThinkingStatus()
+                            Spacer(Modifier.height(12.dp))
+                        }
+                        InlineInputActionBar(
+                            value = aiInstruction.value,
+                            onValueChange = { aiInstruction.value = it },
+                            placeholder = "Örn: Toplantı daveti, kısa ve resmi",
+                            enabled = !aiLoading.value && !sending.value,
+                            minLines = 2,
+                            maxLines = 4,
+                            trailingContent = {
+                                RoundMicButton(
+                                    listening = listening.value,
+                                    enabled = !aiLoading.value && !sending.value && speechHelper.isListenAvailable(),
+                                    onClick = {
+                                        if (listening.value) {
+                                            speechHelper.stopListening()
+                                            listening.value = false
+                                        } else {
+                                            listening.value = true
+                                            val started = speechHelper.startListening(
+                                                onResult = { transcript ->
+                                                    aiInstruction.value = if (aiInstruction.value.isBlank()) {
+                                                        transcript
+                                                    } else {
+                                                        "${aiInstruction.value} $transcript"
+                                                    }
+                                                },
+                                                onError = { message ->
+                                                    scope.launch { snackbar.showSnackbar(message) }
+                                                },
+                                                onEnd = { listening.value = false },
+                                            )
+                                            if (!started) listening.value = false
+                                        }
+                                    },
+                                )
+                                RoundActionButton(
+                                    icon = Icons.Default.AutoAwesome,
+                                    contentDescription = "AI ile Yaz",
+                                    enabled = !aiLoading.value && !sending.value,
+                                    loading = aiLoading.value,
+                                    onClick = { generateAiCompose() },
+                                )
+                            },
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+            Button(
+                onClick = { sendMail() },
+                enabled = !sending.value && !aiLoading.value,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                if (sending.value) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                } else {
+                    Text("Gönder")
                 }
             }
         }

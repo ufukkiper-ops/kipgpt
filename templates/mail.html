@@ -419,13 +419,43 @@
                 <input type="text" name="cc_email" placeholder="Cc">
                 <input type="text" name="bcc_email" placeholder="Bcc">
             </div>
-            <input type="text" name="new_subject" placeholder="Konu">
+            <input type="text" name="new_subject" id="compose-subject" placeholder="Konu">
             <div class="speech-field-wrap">
                 <textarea name="new_body" id="compose-body" placeholder="Mesajınızı yazın..." rows="8"></textarea>
                 <button type="button" class="speech-mic-btn speech-field-mic" id="compose-mic" title="Sesle yaz">
                     <span class="material-icons-outlined">mic</span>
                 </button>
             </div>
+
+            <div class="compose-ai-panel" id="compose-ai-panel" hidden>
+                <div class="ai-panel-header">
+                    <span class="material-icons-outlined">auto_awesome</span>
+                    <h3>KipGPT ile Mail Yaz</h3>
+                </div>
+                <p class="draft-edit-hint">İpucu yazın; AI yeni mail metnini oluştursun. Örn: "Toplantı daveti, kısa ve resmi".</p>
+                <div class="ai-thinking" id="compose-ai-thinking" hidden aria-live="polite">
+                    <span class="ai-thinking-text">Düşünüyor</span>
+                    <span class="ai-thinking-dots" aria-hidden="true">
+                        <span>.</span><span>.</span><span>.</span>
+                    </span>
+                </div>
+                <div class="speech-field-wrap">
+                    <textarea
+                        id="compose-ai-instruction"
+                        placeholder="Mail nasıl olsun? Örn: Ürün teklifi yaz, samimi ol, yarın görüşelim de..."
+                        rows="3"></textarea>
+                    <button type="button" class="speech-mic-btn speech-field-mic" id="compose-ai-mic" title="Sesle yaz">
+                        <span class="material-icons-outlined">mic</span>
+                    </button>
+                </div>
+                <div class="compose-ai-actions">
+                    <button type="button" class="action-btn" id="compose-ai-cancel">Gizle</button>
+                    <button type="button" class="icon-round-btn icon-round-btn-send" id="compose-ai-generate" title="AI ile Yaz">
+                        <span class="material-icons-outlined">auto_awesome</span>
+                    </button>
+                </div>
+            </div>
+
             <div id="compose-file-preview" class="compose-file-preview" hidden></div>
             <div class="compose-footer">
                 <label class="attach-btn" title="Dosya ekle">
@@ -433,6 +463,9 @@
                     Ekle
                     <input type="file" name="attachment" id="compose-file" class="mail-attach-input" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" hidden>
                 </label>
+                <button type="button" class="icon-round-btn icon-round-btn-tonal" id="compose-ai-toggle" title="AI ile yaz">
+                    <span class="material-icons-outlined">auto_awesome</span>
+                </button>
                 <button type="submit" class="icon-round-btn icon-round-btn-send send-compose-btn" title="Gönder">
                     <span class="material-icons-outlined">send</span>
                 </button>
@@ -653,7 +686,7 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/speech.js') }}?v=1"></script>
-<script src="{{ url_for('static', filename='js/mail.js') }}?v=46"></script>
+<script src="{{ url_for('static', filename='js/mail.js') }}?v=47"></script>
 <script id="provider-data" type="application/json">{{ providers|tojson }}</script>
 <script id="sensitivity-data" type="application/json">{{ sensitivity_presets|tojson }}</script>
 {% endblock %}

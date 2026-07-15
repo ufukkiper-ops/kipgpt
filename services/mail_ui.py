@@ -226,6 +226,57 @@ Bu maile profesyonel, kibar ve çözüm odaklı bir Türkçe yanıt yaz. Sadece 
     return ask_gpt_mail_reply(prompt)
 
 
+def generate_ai_new_mail(
+    to_email="",
+    subject="",
+    user_instruction="",
+    current_draft="",
+    revize_notu="",
+):
+    client = get_client()
+    if client is None:
+        raise RuntimeError("Sunucuda OPENAI_API_KEY ayarlı değil.")
+
+    to_email = (to_email or "").strip()
+    subject = (subject or "").strip()
+    user_instruction = (user_instruction or "").strip()
+    current_draft = (current_draft or "").strip()
+    revize_notu = (revize_notu or "").strip()
+
+    if revize_notu:
+        prompt = f"""KULLANICI İPUCU / TALİMAT (ÖNCELİKLİ):
+{revize_notu}
+
+Bu ipucu doğrultusunda aşağıdaki yeni e-posta taslağını güncelle.
+
+Alıcı: {to_email or "(belirtilmedi)"}
+Konu: {subject or "(belirtilmedi)"}
+
+Mevcut Taslak:
+{current_draft or "(boş)"}
+
+Güncellenmiş e-posta gövdesini yaz. Sadece gönderilecek metni döndür; konu satırı veya açıklama ekleme."""
+    elif user_instruction:
+        prompt = f"""KULLANICI İPUCU / TALİMAT (ÖNCELİKLİ):
+{user_instruction}
+
+Bu ipucu doğrultusunda yeni bir e-posta yaz. Ton, uzunluk ve istekler mutlaka yansısın.
+
+Alıcı: {to_email or "(belirtilmedi)"}
+Konu: {subject or "(belirtilmedi)"}
+
+Sadece gönderilecek e-posta gövdesini yaz. Konu satırı veya açıklama ekleme."""
+    else:
+        prompt = f"""Yeni bir profesyonel Türkçe e-posta yaz.
+
+Alıcı: {to_email or "(belirtilmedi)"}
+Konu: {subject or "(belirtilmedi)"}
+
+Kısa, kibar ve net bir gövde metni yaz. Sadece gönderilecek metni döndür."""
+
+    return ask_gpt_mail_reply(prompt)
+
+
 def handle_mail_action(form, mail_config, files=None, user=None):
     islem = form.get("islem")
     sender = form.get("sender", "")

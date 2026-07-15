@@ -813,6 +813,102 @@
         });
     }
 
+    const composeAiPanel = document.getElementById("compose-ai-panel");
+    const composeAiToggle = document.getElementById("compose-ai-toggle");
+    const composeAiCancel = document.getElementById("compose-ai-cancel");
+    const composeAiGenerate = document.getElementById("compose-ai-generate");
+    const composeAiInstruction = document.getElementById("compose-ai-instruction");
+    const composeAiThinking = document.getElementById("compose-ai-thinking");
+    const composeSubject = document.getElementById("compose-subject");
+    const composeBody = document.getElementById("compose-body");
+    let composeAiBusy = false;
+
+    function setComposeAiBusy(busy) {
+        composeAiBusy = busy;
+        if (composeAiGenerate) {
+            composeAiGenerate.style.opacity = busy ? "0.7" : "";
+            composeAiGenerate.style.pointerEvents = busy ? "none" : "";
+        }
+        if (composeAiToggle) {
+            composeAiToggle.disabled = busy;
+        }
+        if (composeAiThinking) {
+            if (busy) {
+                startAiThinking(composeAiThinking);
+            } else {
+                composeAiThinking.hidden = true;
+                if (aiThinkingTimer) {
+                    clearInterval(aiThinkingTimer);
+                    aiThinkingTimer = null;
+                }
+            }
+        }
+    }
+
+    if (composeAiToggle && composeAiPanel) {
+        composeAiToggle.addEventListener("click", function () {
+            composeAiPanel.hidden = !composeAiPanel.hidden;
+            if (!composeAiPanel.hidden && composeAiInstruction) {
+                composeAiInstruction.focus();
+            }
+        });
+    }
+
+    if (composeAiCancel && composeAiPanel) {
+        composeAiCancel.addEventListener("click", function () {
+            composeAiPanel.hidden = true;
+        });
+    }
+
+    if (composeAiGenerate) {
+        composeAiGenerate.addEventListener("click", async function () {
+            if (composeAiBusy) return;
+            const instruction = (composeAiInstruction?.value || "").trim();
+            const currentBody = (composeBody?.value || "").trim();
+            const subject = (composeSubject?.value || "").trim();
+            const toEmail = (composeToInput?.value || "").trim();
+
+            if (!instruction && !currentBody && !subject) {
+                alert("AI için bir ipucu yazın. Örn: Toplantı daveti yaz, kısa ve resmi olsun.");
+                if (composeAiInstruction) composeAiInstruction.focus();
+                return;
+            }
+
+            setComposeAiBusy(true);
+            try {
+                const payload = {
+                    to_email: toEmail,
+                    subject: subject,
+                    user_instruction: currentBody ? "" : instruction,
+                    current_draft: currentBody,
+                    revize_notu: currentBody
+                        ? (instruction || "Taslağı iyileştir, daha net ve profesyonel yaz.")
+                        : "",
+                };
+                const response = await fetch("/mail/ai-compose", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error || "Taslak oluşturulamadı.");
+                }
+                if (composeBody) {
+                    composeBody.value = data.draft || "";
+                    composeBody.focus();
+                }
+                if (composeAiInstruction) {
+                    composeAiInstruction.value = "";
+                }
+            } catch (err) {
+                alert(err.message || "AI taslağı oluşturulurken hata oluştu.");
+            } finally {
+                setComposeAiBusy(false);
+            }
+        });
+    }
+
     function clearAttachmentPreview(input, previewEl) {
         if (input) {
             input.value = "";
@@ -1367,6 +1463,7 @@
             ["ai-instruction-mic", "ai-user-instruction"],
             ["ai-draft-mic", "ai-draft-editor"],
             ["compose-mic", "compose-body"],
+            ["compose-ai-mic", "compose-ai-instruction"],
         ].forEach(function (pair) {
             const button = document.getElementById(pair[0]);
             const field = document.getElementById(pair[1]);

@@ -121,4 +121,29 @@ data class MailSendReplyResponse(
     val message: String,
 )
 
+data class MailAiComposeRequest(
+    val to_email: String = "",
+    val subject: String = "",
+    val user_instruction: String = "",
+    val current_draft: String = "",
+    val revize_notu: String = "",
+)
+
+data class MailAiComposeResponse(
+    val draft: String,
+)
+
+data class MailSendNewRequest(
+    val to_email: String,
+    val subject: String = "",
+    val body: String,
+    val cc_email: String = "",
+    val bcc_email: String = "",
+)
+
+data class MailSendNewResponse(
+    val success: Boolean,
+    val message: String,
+)
+
 data class ApiError(val error: String)

@@ -121,6 +121,40 @@ def mail_translate():
         return jsonify({"error": str(e)}), 500
 
 
+@mail_bp.route("/mail/ai-compose", methods=["POST"])
+def mail_ai_compose():
+    if "user" not in session:
+        return jsonify({"error": "Giriş gerekli."}), 401
+
+    data = request.get_json(silent=True) or {}
+    to_email = (data.get("to_email") or "").strip()
+    subject = (data.get("subject") or data.get("new_subject") or "").strip()
+    user_instruction = (data.get("user_instruction") or "").strip()
+    current_draft = (data.get("current_draft") or "").strip()
+    revize_notu = (data.get("revize_notu") or "").strip()
+
+    if not user_instruction and not revize_notu and not current_draft and not subject:
+        return jsonify({
+            "error": "AI için bir ipucu yazın. Örn: Toplantı daveti yaz, kısa ve resmi olsun.",
+        }), 400
+
+    try:
+        from services.mail_ui import generate_ai_new_mail
+
+        draft = generate_ai_new_mail(
+            to_email=to_email,
+            subject=subject,
+            user_instruction=user_instruction,
+            current_draft=current_draft,
+            revize_notu=revize_notu,
+        )
+        return jsonify({"draft": draft})
+    except RuntimeError as e:
+        return jsonify({"error": str(e)}), 503
+    except Exception as e:
+        return jsonify({"error": f"Taslak oluşturulurken hata: {e}"}), 500
+
+
 @mail_bp.route("/mail", methods=["GET", "POST"])
 def mail_page():
     if "user" not in session:

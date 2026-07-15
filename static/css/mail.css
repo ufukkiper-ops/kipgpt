@@ -2321,6 +2321,49 @@ body.dialog-open .account-remove-form {
     margin-left: auto;
 }
 
+.compose-ai-panel {
+    margin: 0 16px 12px;
+    padding: 14px;
+    border: 1px solid #d2e3fc;
+    border-radius: 16px;
+    background: #f8fbff;
+}
+
+.compose-ai-panel[hidden] {
+    display: none !important;
+}
+
+.compose-ai-panel .ai-panel-header {
+    margin-bottom: 6px;
+}
+
+.compose-ai-panel .draft-edit-hint {
+    margin-bottom: 10px;
+}
+
+.compose-ai-panel textarea {
+    width: 100%;
+    border: 1px solid #dadce0;
+    border-radius: 12px;
+    padding: 10px 12px;
+    font: inherit;
+    resize: vertical;
+    min-height: 72px;
+    background: #fff;
+}
+
+.compose-ai-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.compose-footer .icon-round-btn-tonal {
+    flex-shrink: 0;
+}
+
 .attach-btn {
     display: inline-flex;
     align-items: center;

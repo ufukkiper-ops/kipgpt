@@ -87,6 +87,12 @@ interface KipGptApi {
 
     @POST("mail/send-reply")
     suspend fun sendMailReply(@Body body: MailSendReplyRequest): MailSendReplyResponse
+
+    @POST("mail/ai-compose")
+    suspend fun generateMailAiCompose(@Body body: MailAiComposeRequest): MailAiComposeResponse
+
+    @POST("mail/send-new")
+    suspend fun sendNewMail(@Body body: MailSendNewRequest): MailSendNewResponse
 }
 
 class ApiClient(private var token: String?, baseUrl: String) {

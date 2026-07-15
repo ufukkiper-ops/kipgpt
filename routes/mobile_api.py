@@ -4,9 +4,9 @@ from io import BytesIO
 from services.api_auth import create_api_token, require_api_user
 from services.mail_accounts import list_accounts_for_ui, resolve_active_mail_config
 from services.mail_settings import get_mail_settings
-from services.mail_ui import FOLDERS, download_mail_attachment, filter_mails, generate_ai_mail_reply, load_folder_mails, load_single_mail, mail_content_preview
+from services.mail_ui import FOLDERS, download_mail_attachment, filter_mails, generate_ai_mail_reply, generate_ai_new_mail, load_folder_mails, load_single_mail, mail_content_preview
 from services.translate_service import translate_mail_content
-from mail import send_reply_mail
+from mail import send_new_mail, send_reply_mail
 from services.chat_service import (
     analyze_uploaded_file,
     generate_chat_response,
@@ -558,4 +558,76 @@ def api_mail_send_reply(user_id):
     return jsonify({
         "success": True,
         "message": f"{sender} adresine yanıt gönderildi.",
+    })
+
+
+@mobile_api_bp.route("/mail/ai-compose", methods=["POST"])
+@require_api_user
+def api_mail_ai_compose(user_id):
+    payload = request.get_json(silent=True) or {}
+    to_email = (payload.get("to_email") or "").strip()
+    subject = (payload.get("subject") or "").strip()
+    user_instruction = (payload.get("user_instruction") or "").strip()
+    current_draft = (payload.get("current_draft") or "").strip()
+    revize_notu = (payload.get("revize_notu") or "").strip()
+
+    if not user_instruction and not revize_notu and not current_draft and not subject:
+        return jsonify({
+            "error": "AI için bir ipucu yazın. Örn: Toplantı daveti yaz, kısa ve resmi olsun.",
+        }), 400
+
+    try:
+        draft = generate_ai_new_mail(
+            to_email=to_email,
+            subject=subject,
+            user_instruction=user_instruction,
+            current_draft=current_draft,
+            revize_notu=revize_notu,
+        )
+    except RuntimeError as e:
+        return jsonify({"error": str(e)}), 503
+    except Exception as e:
+        return jsonify({"error": f"Taslak oluşturulurken hata: {e}"}), 500
+
+    return jsonify({"draft": draft})
+
+
+@mobile_api_bp.route("/mail/send-new", methods=["POST"])
+@require_api_user
+def api_mail_send_new(user_id):
+    user = find_user_by_id(user_id)
+    if not user:
+        return jsonify({"error": "Kullanıcı bulunamadı."}), 404
+
+    mail_config, _active_account, _settings = _mail_context(user)
+    if not mail_config:
+        return jsonify({"error": "Mail hesabı bağlı değil."}), 400
+
+    payload = request.get_json(silent=True) or {}
+    to_email = (payload.get("to_email") or "").strip()
+    subject = (payload.get("subject") or "").strip()
+    body = (payload.get("body") or payload.get("new_body") or "").strip()
+    cc_email = (payload.get("cc_email") or "").strip()
+    bcc_email = (payload.get("bcc_email") or "").strip()
+
+    if not to_email:
+        return jsonify({"error": "Alıcı gerekli."}), 400
+    if not body:
+        return jsonify({"error": "Mail metni boş."}), 400
+
+    try:
+        send_new_mail(
+            mail_config,
+            to_email=to_email,
+            subject=subject,
+            body=body,
+            cc=cc_email,
+            bcc=bcc_email,
+        )
+    except Exception as e:
+        return jsonify({"error": f"E-posta gönderilirken hata: {str(e)}"}), 500
+
+    return jsonify({
+        "success": True,
+        "message": f"{to_email} adresine mail gönderildi.",
     })
