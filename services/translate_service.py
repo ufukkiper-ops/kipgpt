@@ -20,11 +20,13 @@ def translate_mail_content(text, target_lang):
         raise Exception("OPENAI_API_KEY bulunamadı.")
 
     lang_name = LANG_LABELS[target_lang]
-    prompt = f"""Aşağıdaki e-posta içeriğinin tamamını {lang_name} diline çevir.
+    prompt = f"""Önce aşağıdaki e-posta içeriğinin dilini algıla, sonra tamamını {lang_name} diline çevir.
 
 Kurallar:
+- Kaynak dili otomatik algıla; hedef dil {lang_name}.
+- Kaynak dil zaten {lang_name} ise metni anlamlı şekilde aynı dilde düzgünleştirerek ver, "zaten bu dilde" gibi not yazma.
 - Sadece çevrilmiş metni döndür.
-- Açıklama, not veya ek cümle ekleme.
+- Açıklama, not, kaynak dil adı veya ek cümle ekleme.
 - Markdown kullanma.
 - Paragraf ve satır düzenini koru.
 - İsimleri, e-posta adreslerini ve URL'leri olduğu gibi bırak.

@@ -12,8 +12,8 @@ android {
         applicationId = "com.kipgpt.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 18
-        versionName = "1.5.1"
+        versionCode = 19
+        versionName = "1.5.2"
     }
 
     buildTypes {

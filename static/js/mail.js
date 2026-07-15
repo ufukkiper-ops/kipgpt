@@ -143,9 +143,9 @@
 
     function updateTranslateButtons() {
         const defaultTitles = {
-            tr: "Türkçe'ye çevir",
-            en: "Translate to English",
-            de: "Auf Deutsch übersetzen",
+            tr: "Dili algıla ve Türkçe'ye çevir",
+            en: "Detect language and translate to English",
+            de: "Sprache erkennen und ins Deutsche übersetzen",
         };
 
         translateButtons.forEach(function (btn) {
@@ -155,7 +155,7 @@
             btn.disabled = readerBody?.classList.contains("is-translating");
             btn.title = isActive
                 ? "Orijinal metni göster"
-                : (defaultTitles[lang] || "Çevir");
+                : (defaultTitles[lang] || "Dili algıla ve çevir");
         });
     }
 
@@ -195,7 +195,7 @@
         updateTranslateButtons();
 
         const previousText = bodyEl.textContent;
-        bodyEl.textContent = "Çeviri hazırlanıyor...";
+        bodyEl.textContent = "Dil algılanıyor, çeviri hazırlanıyor...";
 
         try {
             const response = await fetch("/mail/translate", {
@@ -590,6 +590,50 @@
             aiPanel.querySelector('textarea[name="user_instruction"]');
         if (textarea) textarea.focus();
     }
+
+    const AI_THINKING_LABELS = ["Düşünüyor", "Hazırlıyor"];
+    let aiThinkingTimer = null;
+
+    function startAiThinking(statusEl) {
+        if (!statusEl) return;
+        statusEl.hidden = false;
+        const textEl = statusEl.querySelector(".ai-thinking-text");
+        let tick = 0;
+        if (textEl) {
+            textEl.textContent = AI_THINKING_LABELS[0];
+        }
+        if (aiThinkingTimer) {
+            clearInterval(aiThinkingTimer);
+        }
+        aiThinkingTimer = setInterval(function () {
+            tick += 1;
+            if (textEl) {
+                textEl.textContent = AI_THINKING_LABELS[tick % AI_THINKING_LABELS.length];
+            }
+        }, 1600);
+    }
+
+    function bindAiFormThinking(form, statusEl) {
+        if (!form) return;
+        form.addEventListener("submit", function () {
+            startAiThinking(statusEl);
+            form.classList.add("is-ai-busy");
+            const submitBtn = form.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.style.pointerEvents = "none";
+                submitBtn.style.opacity = "0.7";
+            }
+        });
+    }
+
+    bindAiFormThinking(
+        document.getElementById("ai-generate-form"),
+        document.getElementById("ai-thinking"),
+    );
+    bindAiFormThinking(
+        document.getElementById("ai-revise-form"),
+        document.getElementById("ai-revise-thinking"),
+    );
 
     if (replyBtn) {
         replyBtn.addEventListener("click", showManualReplyPanel);

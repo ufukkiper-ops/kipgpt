@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -52,9 +54,17 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -77,6 +87,7 @@ import com.kipgpt.app.data.MailItem
 import com.kipgpt.app.data.MailSendReplyRequest
 import com.kipgpt.app.data.SpeechHelper
 import com.kipgpt.app.data.TranslateRequest
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -706,12 +717,19 @@ fun MailDetailScreen(
             )
             Spacer(Modifier.height(8.dp))
 
+            Text(
+                "Dili algıla ve şu dile çevir:",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(6.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("tr" to "TR", "en" to "EN", "de" to "DE").forEach { (code, label) ->
+                listOf("tr" to "Türkçe", "en" to "English", "de" to "Deutsch").forEach { (code, label) ->
                     FilterChip(
                         selected = translatedLang.value == code,
                         onClick = { translate(code) },
                         label = { Text(label) },
+                        enabled = !loading.value && !detailLoading.value,
                     )
                 }
             }
@@ -719,6 +737,14 @@ fun MailDetailScreen(
             Spacer(Modifier.height(12.dp))
 
             if (detailLoading.value || loading.value) {
+                if (loading.value && !detailLoading.value) {
+                    Text(
+                        "Dil algılanıyor, çeviri hazırlanıyor...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(bottom = 8.dp),
+                    )
+                }
                 CircularProgressIndicator()
             } else {
                 Text(content.value, style = MaterialTheme.typography.bodyLarge)
@@ -778,6 +804,11 @@ fun MailDetailScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Spacer(Modifier.height(12.dp))
+
+                        if (aiLoading.value) {
+                            AiThinkingStatus()
+                            Spacer(Modifier.height(12.dp))
+                        }
 
                         if (aiDraft.value.isBlank()) {
                             InlineInputActionBar(
@@ -875,6 +906,54 @@ private fun formatSize(bytes: Int): String {
     if (bytes < 1024) return "$bytes B"
     if (bytes < 1024 * 1024) return "${bytes / 1024} KB"
     return "${bytes / (1024 * 1024)} MB"
+}
+
+@Composable
+private fun AiThinkingStatus() {
+    val labels = listOf("Düşünüyor", "Hazırlıyor")
+    val labelIndex = remember { mutableIntStateOf(0) }
+    val infinite = rememberInfiniteTransition(label = "ai-dots")
+    val dotAlpha by infinite.animateFloat(
+        initialValue = 0.2f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(600, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "dot-alpha",
+    )
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(1600)
+            labelIndex.intValue = (labelIndex.intValue + 1) % labels.size
+        }
+    }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f))
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+    ) {
+        Text(
+            labels[labelIndex.intValue],
+            color = MaterialTheme.colorScheme.primary,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Medium,
+        )
+        Spacer(Modifier.width(2.dp))
+        listOf(0, 1, 2).forEach { index ->
+            val phaseAlpha = ((dotAlpha + index * 0.25f) % 1.2f).coerceIn(0.15f, 1f)
+            Text(
+                ".",
+                color = MaterialTheme.colorScheme.primary.copy(alpha = phaseAlpha),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+    }
 }
 
 private fun formatSenderName(mail: MailItem): String {

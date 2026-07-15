@@ -260,10 +260,10 @@
                         <div class="reader-header-top">
                             <h1 class="reader-subject" id="reader-subject"></h1>
                             <div class="reader-translate-bar" id="reader-translate-bar">
-                                <span class="translate-label">Çeviri</span>
-                                <button type="button" class="translate-btn" data-lang="tr" title="Türkçe'ye çevir">Türkçe</button>
-                                <button type="button" class="translate-btn" data-lang="en" title="Translate to English">English</button>
-                                <button type="button" class="translate-btn" data-lang="de" title="Auf Deutsch übersetzen">Deutsch</button>
+                                <span class="translate-label">Dili algıla ve şu dile çevir:</span>
+                                <button type="button" class="translate-btn" data-lang="tr" title="Algılanan dilden Türkçe'ye çevir">Türkçe</button>
+                                <button type="button" class="translate-btn" data-lang="en" title="Detect language and translate to English">English</button>
+                                <button type="button" class="translate-btn" data-lang="de" title="Sprache erkennen und ins Deutsche übersetzen">Deutsch</button>
                             </div>
                         </div>
                         <div class="reader-meta">
@@ -352,7 +352,13 @@
                                 <h3>KipGPT ile Yanıt Oluştur</h3>
                             </div>
                             <p class="draft-edit-hint">AI, yazdığınız ipucu doğrultusunda yanıt üretir. Örn: "Kısa ve net yaz", "Toplantıyı Perşembe 14:00 öner".</p>
-                            <form method="post" class="ai-form">
+                            <div class="ai-thinking" id="ai-thinking" hidden aria-live="polite">
+                                <span class="ai-thinking-text">Düşünüyor</span>
+                                <span class="ai-thinking-dots" aria-hidden="true">
+                                    <span>.</span><span>.</span><span>.</span>
+                                </span>
+                            </div>
+                            <form method="post" class="ai-form" id="ai-generate-form">
                                 <input type="hidden" name="islem" value="olustur">
                                 <input type="hidden" name="mail_id" id="ai-mail-id">
                             <input type="hidden" name="sender" id="ai-sender">
@@ -647,7 +653,7 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/speech.js') }}?v=1"></script>
-<script src="{{ url_for('static', filename='js/mail.js') }}?v=45"></script>
+<script src="{{ url_for('static', filename='js/mail.js') }}?v=46"></script>
 <script id="provider-data" type="application/json">{{ providers|tojson }}</script>
 <script id="sensitivity-data" type="application/json">{{ sensitivity_presets|tojson }}</script>
 {% endblock %}
