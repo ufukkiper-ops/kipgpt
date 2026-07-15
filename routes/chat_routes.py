@@ -94,6 +94,8 @@ def new_chat():
 
     save_data(data)
 
+    if request.args.get("embed") == "1":
+        return redirect(url_for("chat.index", embed=1))
     return redirect(url_for("chat.index"))
 
 
@@ -372,6 +374,8 @@ def index():
 
 
 
+    embed = request.args.get("embed") == "1" or request.form.get("embed") == "1"
+
     return render_template(
 
         "chat.html",
@@ -387,6 +391,8 @@ def index():
         messages_html=messages_html,
 
         title="KipGPT",
+
+        embed=embed,
 
     )
 

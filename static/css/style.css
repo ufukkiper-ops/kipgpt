@@ -915,3 +915,44 @@ button{
 }
 
 }
+
+/* Embedded chat inside mail bubble */
+body.chat-embed,
+body.chat-embed html {
+    overflow: hidden;
+    height: 100%;
+    background: #fff;
+}
+
+body.chat-embed .layout,
+body.chat-embed .layout-embed {
+    height: 100vh;
+    width: 100%;
+}
+
+body.chat-embed .sidebar {
+    display: none !important;
+}
+
+body.chat-embed .topbar {
+    height: 52px;
+    padding: 0 12px;
+}
+
+body.chat-embed .messages {
+    padding: 14px 12px;
+    gap: 10px;
+}
+
+body.chat-embed .msg {
+    max-width: 88%;
+}
+
+body.chat-embed .bottom {
+    padding: 8px 10px 12px;
+}
+
+body.chat-embed .right-buttons .btn {
+    padding: 8px 12px;
+    font-size: 13px;
+}

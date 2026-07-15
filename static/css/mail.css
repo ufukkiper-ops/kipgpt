@@ -2656,3 +2656,107 @@ body.dialog-open .account-remove-form {
         font-size: 13px;
     }
 }
+
+/* Floating chat bubble on mail */
+.chat-bubble-fab {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 1200;
+    width: 56px;
+    height: 56px;
+    border: none;
+    border-radius: 50%;
+    background: #2563eb;
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(37, 99, 235, 0.35);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chat-bubble-fab:hover {
+    background: #1d4ed8;
+}
+
+.chat-bubble-fab.is-open {
+    background: #1e3a8a;
+}
+
+.chat-bubble-fab .material-icons-outlined {
+    font-size: 26px;
+}
+
+.chat-bubble-panel {
+    position: fixed;
+    right: 24px;
+    bottom: 92px;
+    z-index: 1210;
+    width: min(420px, calc(100vw - 24px));
+    height: min(640px, calc(100vh - 120px));
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 20px;
+    box-shadow: 0 18px 48px rgba(15, 23, 42, 0.22);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-bubble-panel[hidden] {
+    display: none !important;
+}
+
+.chat-bubble-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f8fafc;
+}
+
+.chat-bubble-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #111827;
+}
+
+.chat-bubble-title .material-icons-outlined {
+    color: #2563eb;
+    font-size: 20px;
+}
+
+.chat-bubble-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.chat-bubble-frame {
+    flex: 1;
+    width: 100%;
+    border: 0;
+    background: #fff;
+}
+
+@media (max-width: 640px) {
+    .chat-bubble-fab {
+        right: 16px;
+        bottom: 16px;
+    }
+
+    .chat-bubble-panel {
+        right: 0;
+        left: 0;
+        bottom: 0;
+        width: 100vw;
+        height: min(78vh, 640px);
+        border-radius: 16px 16px 0 0;
+    }
+}

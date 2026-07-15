@@ -39,9 +39,9 @@
         </form>
 
         <div class="header-right">
-            <a href="/chat" class="icon-btn" title="Sohbete dön">
+            <button type="button" class="icon-btn" id="chat-bubble-open" title="Sohbet">
                 <span class="material-icons-outlined">chat</span>
-            </a>
+            </button>
             <a href="/logout" class="icon-btn" title="Çıkış">
                 <span class="material-icons-outlined">logout</span>
             </a>
@@ -682,11 +682,38 @@
 
 </div>
 
+<!-- Sohbet baloncuğu -->
+<button type="button" class="chat-bubble-fab" id="chat-bubble-fab" title="KipGPT Sohbet">
+    <span class="material-icons-outlined">chat</span>
+</button>
+<div class="chat-bubble-panel" id="chat-bubble-panel" hidden>
+    <div class="chat-bubble-header">
+        <div class="chat-bubble-title">
+            <span class="material-icons-outlined">auto_awesome</span>
+            <span>KipGPT Sohbet</span>
+        </div>
+        <div class="chat-bubble-actions">
+            <a href="/chat" class="icon-btn" title="Tam sayfa aç" target="_blank" rel="noopener">
+                <span class="material-icons-outlined">open_in_new</span>
+            </a>
+            <button type="button" class="icon-btn" id="chat-bubble-close" title="Kapat">
+                <span class="material-icons-outlined">close</span>
+            </button>
+        </div>
+    </div>
+    <iframe
+        id="chat-bubble-frame"
+        class="chat-bubble-frame"
+        title="KipGPT Sohbet"
+        src="about:blank"
+        loading="lazy"></iframe>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/speech.js') }}?v=1"></script>
-<script src="{{ url_for('static', filename='js/mail.js') }}?v=47"></script>
+<script src="{{ url_for('static', filename='js/mail.js') }}?v=48"></script>
 <script id="provider-data" type="application/json">{{ providers|tojson }}</script>
 <script id="sensitivity-data" type="application/json">{{ sensitivity_presets|tojson }}</script>
 {% endblock %}

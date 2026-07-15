@@ -1,9 +1,12 @@
 {% extends "base.html" %}
 
+{% block body_class %}{% if embed %}chat-embed{% endif %}{% endblock %}
+
 {% block content %}
 
-<div class="layout">
+<div class="layout{% if embed %} layout-embed{% endif %}">
 
+    {% if not embed %}
     <div class="sidebar">
 
         <h2>KipGPT</h2>
@@ -29,6 +32,7 @@
         </div>
 
     </div>
+    {% endif %}
 
     <div class="main">
 
@@ -39,7 +43,7 @@
             </div>
 
             <div class="right-buttons">
-
+                {% if not embed %}
                 <a href="/mail">
                     <button class="btn btn-green" type="button">📧 Mailler</button>
                 </a>
@@ -55,7 +59,11 @@
                         Çıkış
                     </button>
                 </a>
-
+                {% else %}
+                <a class="btn btn-green" href="/new_chat?embed=1" style="display:inline-flex;align-items:center;">
+                    + Yeni
+                </a>
+                {% endif %}
             </div>
 
         </div>
@@ -74,7 +82,7 @@
             <form id="chat-form"
                   class="input-container"
                   method="post"
-                  action="/chat"
+                  action="/chat{% if embed %}?embed=1{% endif %}"
                   onsubmit="return false;"
                   enctype="multipart/form-data">
 
@@ -85,6 +93,7 @@
                        hidden>
 
                 <input type="hidden" name="action" value="text">
+                {% if embed %}<input type="hidden" name="embed" value="1">{% endif %}
 
                 <input id="chat-input"
                        type="text"

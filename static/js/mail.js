@@ -1473,4 +1473,50 @@
         });
     }
 
+    const chatBubblePanel = document.getElementById("chat-bubble-panel");
+    const chatBubbleFrame = document.getElementById("chat-bubble-frame");
+    const chatBubbleFab = document.getElementById("chat-bubble-fab");
+    const chatBubbleOpen = document.getElementById("chat-bubble-open");
+    const chatBubbleClose = document.getElementById("chat-bubble-close");
+    let chatBubbleLoaded = false;
+
+    function openChatBubble() {
+        if (!chatBubblePanel) return;
+        chatBubblePanel.hidden = false;
+        if (chatBubbleFab) {
+            chatBubbleFab.classList.add("is-open");
+        }
+        if (chatBubbleFrame && !chatBubbleLoaded) {
+            chatBubbleFrame.src = "/chat?embed=1";
+            chatBubbleLoaded = true;
+        }
+    }
+
+    function closeChatBubble() {
+        if (!chatBubblePanel) return;
+        chatBubblePanel.hidden = true;
+        if (chatBubbleFab) {
+            chatBubbleFab.classList.remove("is-open");
+        }
+    }
+
+    function toggleChatBubble() {
+        if (!chatBubblePanel) return;
+        if (chatBubblePanel.hidden) {
+            openChatBubble();
+        } else {
+            closeChatBubble();
+        }
+    }
+
+    if (chatBubbleFab) {
+        chatBubbleFab.addEventListener("click", toggleChatBubble);
+    }
+    if (chatBubbleOpen) {
+        chatBubbleOpen.addEventListener("click", openChatBubble);
+    }
+    if (chatBubbleClose) {
+        chatBubbleClose.addEventListener("click", closeChatBubble);
+    }
+
 })();
