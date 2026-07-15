@@ -90,6 +90,13 @@
 
         <p class="draft-edit-hint">Önce yukarıdaki metni elle düzenleyin; sonra AI'den istediğiniz değişikliği isteyin.</p>
 
+        <div class="ai-thinking" id="ai-revise-thinking" hidden aria-live="polite">
+            <span class="ai-thinking-text">Hazırlıyor</span>
+            <span class="ai-thinking-dots" aria-hidden="true">
+                <span>.</span><span>.</span><span>.</span>
+            </span>
+        </div>
+
         <form method="post" class="ai-form" id="ai-revise-form">
 
             <input type="hidden" name="islem" value="revize_et">
