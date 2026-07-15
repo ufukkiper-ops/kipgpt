@@ -70,12 +70,12 @@ data class MailAttachment(
 )
 
 data class MailItem(
-    val id: String,
-    val subject: String,
-    val sender: String,
-    val sender_display: String,
-    val date: String,
-    val content: String,
+    val id: String = "",
+    val subject: String = "",
+    val sender: String = "",
+    val sender_display: String = "",
+    val date: String = "",
+    val content: String = "",
     val attachments: List<MailAttachment> = emptyList(),
     val thread_count: Int = 1,
     val starred: Boolean = false,
@@ -96,6 +96,15 @@ data class MailLanguageOption(val code: String, val label: String)
 
 data class MailLanguagesResponse(val languages: List<MailLanguageOption> = emptyList())
 
+data class LibraryAttachmentRef(
+    val id: String = "",
+    val filename: String = "",
+    val mimetype: String = "",
+    val size: Int = 0,
+    val score: Int = 0,
+    val query: String = "",
+)
+
 data class MailAiReplyRequest(
     val mail_id: String = "",
     val folder: String = "inbox",
@@ -109,7 +118,16 @@ data class MailAiReplyRequest(
 
 data class MailAiReplyResponse(
     val draft: String,
+    val html_body: String = "",
+    val library_attachments: List<LibraryAttachmentRef> = emptyList(),
+    val library_file_ids: List<String> = emptyList(),
     val mail: MailItem,
+)
+
+data class OutgoingAttachmentPayload(
+    val filename: String,
+    val mimetype: String = "application/octet-stream",
+    val data_base64: String,
 )
 
 data class MailSendReplyRequest(
@@ -118,6 +136,9 @@ data class MailSendReplyRequest(
     val final_reply: String,
     val cc_email: String = "",
     val bcc_email: String = "",
+    val html_body: String = "",
+    val library_file_ids: List<String> = emptyList(),
+    val attachment: OutgoingAttachmentPayload? = null,
 )
 
 data class MailSendReplyResponse(
@@ -135,6 +156,9 @@ data class MailAiComposeRequest(
 
 data class MailAiComposeResponse(
     val draft: String,
+    val html_body: String = "",
+    val library_attachments: List<LibraryAttachmentRef> = emptyList(),
+    val library_file_ids: List<String> = emptyList(),
 )
 
 data class MailSendNewRequest(
@@ -143,11 +167,92 @@ data class MailSendNewRequest(
     val body: String,
     val cc_email: String = "",
     val bcc_email: String = "",
+    val html_body: String = "",
+    val library_file_ids: List<String> = emptyList(),
+    val attachment: OutgoingAttachmentPayload? = null,
 )
 
 data class MailSendNewResponse(
     val success: Boolean,
     val message: String,
 )
+
+data class MailSummaryRequest(
+    val mail_id: String = "",
+    val folder: String = "inbox",
+    val sender: String = "",
+    val subject: String = "",
+    val content: String = "",
+    val create_reminders: Boolean = false,
+)
+
+data class MailSummaryData(
+    val summary: String = "",
+    val interpretation: String = "",
+    val importance: String = "medium",
+    val urgency: String = "medium",
+    val action_items: List<String> = emptyList(),
+    val suggested_reply: String = "",
+)
+
+data class CalendarEvent(
+    val id: String = "",
+    val title: String = "",
+    val description: String = "",
+    val start: String? = null,
+    val end: String? = null,
+    val reminder_at: String? = null,
+    val all_day: Boolean = false,
+    val done: Boolean = false,
+    val source: String = "",
+    val source_mail_id: String? = null,
+    val created_at: String = "",
+    val due_at: String? = null,
+    val is_overdue: Boolean = false,
+)
+
+data class MailSummaryResponse(
+    val summary: MailSummaryData,
+    val reminders_created: List<CalendarEvent> = emptyList(),
+)
+
+data class CalendarEventsResponse(
+    val events: List<CalendarEvent> = emptyList(),
+    val reminders: List<CalendarEvent> = emptyList(),
+)
+
+data class CalendarCreateRequest(
+    val title: String,
+    val description: String = "",
+    val start: String? = null,
+    val end: String? = null,
+    val reminder_at: String? = null,
+    val all_day: Boolean = false,
+)
+
+data class CalendarUpdateRequest(
+    val title: String? = null,
+    val description: String? = null,
+    val start: String? = null,
+    val reminder_at: String? = null,
+    val done: Boolean? = null,
+)
+
+data class CalendarEventResponse(val event: CalendarEvent)
+
+data class LibraryFile(
+    val id: String = "",
+    val filename: String = "",
+    val stored_name: String = "",
+    val mimetype: String = "",
+    val category: String = "",
+    val size: Int = 0,
+    val note: String = "",
+    val created_at: String = "",
+)
+
+data class FilesResponse(val files: List<LibraryFile> = emptyList())
+
+data class FileUploadResponse(val file: LibraryFile)
 
 data class ApiError(val error: String)

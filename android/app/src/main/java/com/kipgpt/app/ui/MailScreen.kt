@@ -2,10 +2,13 @@ package com.kipgpt.app.ui
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.util.Base64
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,10 +35,12 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Summarize
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material.icons.outlined.StarOutline
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -77,6 +82,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.kipgpt.app.data.ApiClient
 import com.kipgpt.app.data.AttachmentSaver
+import com.kipgpt.app.data.LibraryAttachmentRef
 import com.kipgpt.app.data.MailAiComposeRequest
 import com.kipgpt.app.data.MailAiReplyRequest
 import com.kipgpt.app.data.MailAttachment
@@ -84,9 +90,14 @@ import com.kipgpt.app.data.MailFolder
 import com.kipgpt.app.data.MailItem
 import com.kipgpt.app.data.MailSendNewRequest
 import com.kipgpt.app.data.MailSendReplyRequest
+import com.kipgpt.app.data.MailSummaryData
+import com.kipgpt.app.data.MailSummaryRequest
+import com.kipgpt.app.data.OutgoingAttachmentPayload
 import com.kipgpt.app.data.SpeechHelper
 import com.kipgpt.app.data.TranslateRequest
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -452,6 +463,10 @@ fun MailDetailScreen(
     val listeningInstruction = remember { mutableStateOf(false) }
     val listeningRevise = remember { mutableStateOf(false) }
     val pendingVoiceTarget = remember { mutableStateOf<String?>(null) }
+    val htmlBody = remember { mutableStateOf("") }
+    val libraryAttachments = remember { mutableStateOf<List<LibraryAttachmentRef>>(emptyList()) }
+    val summary = remember { mutableStateOf<MailSummaryData?>(null) }
+    val summaryLoading = remember { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val speechHelper = remember { SpeechHelper(context) }
@@ -530,6 +545,9 @@ fun MailDetailScreen(
             mailState.value = full
             content.value = full.content
             translatedLang.value = null
+            summary.value = null
+            htmlBody.value = ""
+            libraryAttachments.value = emptyList()
         } catch (e: Exception) {
             snackbar.showSnackbar(e.message ?: "Mail yüklenemedi")
         } finally {
@@ -622,7 +640,14 @@ fun MailDetailScreen(
                     ),
                 )
                 aiDraft.value = response.draft
+                htmlBody.value = response.html_body
+                libraryAttachments.value = response.library_attachments
                 reviseNote.value = ""
+                if (response.library_attachments.isNotEmpty()) {
+                    snackbar.showSnackbar(
+                        "Kütüphane eki: " + response.library_attachments.joinToString { it.filename },
+                    )
+                }
             } catch (e: Exception) {
                 snackbar.showSnackbar(e.message ?: "AI yanıt oluşturulamadı")
             } finally {
@@ -646,12 +671,16 @@ fun MailDetailScreen(
                         sender = detail.sender,
                         subject = detail.subject,
                         final_reply = draft,
+                        html_body = htmlBody.value,
+                        library_file_ids = libraryAttachments.value.map { it.id },
                     ),
                 )
                 snackbar.showSnackbar(response.message)
                 showAiPanel.value = false
                 aiDraft.value = ""
                 aiInstruction.value = ""
+                htmlBody.value = ""
+                libraryAttachments.value = emptyList()
             } catch (e: Exception) {
                 snackbar.showSnackbar(e.message ?: "Yanıt gönderilemedi")
             } finally {
@@ -692,14 +721,44 @@ fun MailDetailScreen(
                             )
                         }
                     }
-                    IconButton(onClick = { translate("tr") }) {
+                    IconButton(onClick = { translate(selectedLang.value) }) {
                         Icon(Icons.Default.Translate, contentDescription = "Çevir")
+                    }
+                    IconButton(
+                        onClick = {
+                            scope.launch {
+                                summaryLoading.value = true
+                                try {
+                                    val detail = mailState.value
+                                    val response = apiClient.api.mailSummary(
+                                        MailSummaryRequest(
+                                            mail_id = detail.id,
+                                            folder = folder,
+                                            sender = detail.sender,
+                                            subject = detail.subject,
+                                            content = detail.content,
+                                            create_reminders = false,
+                                        ),
+                                    )
+                                    summary.value = response.summary
+                                } catch (e: Exception) {
+                                    snackbar.showSnackbar(e.message ?: "Özet alınamadı")
+                                } finally {
+                                    summaryLoading.value = false
+                                }
+                            }
+                        },
+                        enabled = !summaryLoading.value && !detailLoading.value,
+                    ) {
+                        Icon(Icons.Default.Summarize, contentDescription = "AI Özet")
                     }
                     IconButton(onClick = {
                         showAiPanel.value = !showAiPanel.value
                         if (!showAiPanel.value) {
                             aiDraft.value = ""
                             reviseNote.value = ""
+                            htmlBody.value = ""
+                            libraryAttachments.value = emptyList()
                         }
                     }) {
                         Icon(Icons.Default.AutoAwesome, contentDescription = "AI ile yanıtla")
@@ -842,6 +901,81 @@ fun MailDetailScreen(
                 Text(content.value, style = MaterialTheme.typography.bodyLarge)
             }
 
+            if (summaryLoading.value) {
+                Spacer(Modifier.height(12.dp))
+                Text("AI özet hazırlanıyor...", color = MaterialTheme.colorScheme.primary)
+            }
+
+            summary.value?.let { s ->
+                Spacer(Modifier.height(16.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f),
+                    ),
+                ) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text("AI Özet & Yorum", fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.height(8.dp))
+                        Text(s.summary)
+                        if (s.interpretation.isNotBlank()) {
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                s.interpretation,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            "Önem: ${s.importance} · Aciliyet: ${s.urgency}",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        if (s.action_items.isNotEmpty()) {
+                            Spacer(Modifier.height(8.dp))
+                            s.action_items.forEach { item ->
+                                Text("• $item")
+                            }
+                        }
+                        if (s.suggested_reply.isNotBlank()) {
+                            Spacer(Modifier.height(8.dp))
+                            Text("Önerilen yanıt", fontWeight = FontWeight.Medium)
+                            Text(s.suggested_reply)
+                        }
+                        Spacer(Modifier.height(10.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(onClick = {
+                                scope.launch {
+                                    try {
+                                        val detail = mailState.value
+                                        val response = apiClient.api.mailSummary(
+                                            MailSummaryRequest(
+                                                mail_id = detail.id,
+                                                folder = folder,
+                                                sender = detail.sender,
+                                                subject = detail.subject,
+                                                content = detail.content,
+                                                create_reminders = true,
+                                            ),
+                                        )
+                                        summary.value = response.summary
+                                        snackbar.showSnackbar(
+                                            "${response.reminders_created.size} hatırlatıcı eklendi",
+                                        )
+                                    } catch (e: Exception) {
+                                        snackbar.showSnackbar(e.message ?: "Hatırlatıcı eklenemedi")
+                                    }
+                                }
+                            }) {
+                                Text("Hatırlatıcı oluştur")
+                            }
+                            OutlinedButton(onClick = { summary.value = null }) {
+                                Text("Gizle")
+                            }
+                        }
+                    }
+                }
+            }
+
             if (detail.attachments.isNotEmpty()) {
                 Spacer(Modifier.height(16.dp))
                 Text("Ekler (${detail.attachments.size})", fontWeight = FontWeight.SemiBold)
@@ -940,6 +1074,25 @@ fun MailDetailScreen(
                                 label = { Text("Yanıt taslağı") },
                                 minLines = 8,
                             )
+                            if (libraryAttachments.value.isNotEmpty()) {
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    "Kütüphane ekleri",
+                                    style = MaterialTheme.typography.labelMedium,
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                                ) {
+                                    libraryAttachments.value.forEach { item ->
+                                        AssistChip(
+                                            onClick = {},
+                                            label = { Text(item.filename) },
+                                        )
+                                    }
+                                }
+                            }
                             Spacer(Modifier.height(12.dp))
                             InlineInputActionBar(
                                 value = reviseNote.value,
@@ -1011,9 +1164,38 @@ fun ComposeMailScreen(
     val aiLoading = remember { mutableStateOf(false) }
     val sending = remember { mutableStateOf(false) }
     val listening = remember { mutableStateOf(false) }
+    val htmlBody = remember { mutableStateOf("") }
+    val libraryAttachments = remember { mutableStateOf<List<LibraryAttachmentRef>>(emptyList()) }
+    val pendingAttachmentName = remember { mutableStateOf<String?>(null) }
+    val pendingAttachment = remember { mutableStateOf<OutgoingAttachmentPayload?>(null) }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val speechHelper = remember { SpeechHelper(context) }
+
+    val attachPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri: Uri? ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            try {
+                val (filename, bytes, mime) = withContext(Dispatchers.IO) {
+                    readUriBytes(context.contentResolver, uri)
+                }
+                if (bytes.size > 15 * 1024 * 1024) {
+                    snackbar.showSnackbar("Dosya 15 MB sınırını aşıyor")
+                    return@launch
+                }
+                pendingAttachmentName.value = filename
+                pendingAttachment.value = OutgoingAttachmentPayload(
+                    filename = filename,
+                    mimetype = mime,
+                    data_base64 = Base64.encodeToString(bytes, Base64.NO_WRAP),
+                )
+            } catch (e: Exception) {
+                snackbar.showSnackbar(e.message ?: "Dosya okunamadı")
+            }
+        }
+    }
 
     DisposableEffect(speechHelper) {
         onDispose { speechHelper.shutdown() }
@@ -1043,7 +1225,14 @@ fun ComposeMailScreen(
                     ),
                 )
                 body.value = response.draft
+                htmlBody.value = response.html_body
+                libraryAttachments.value = response.library_attachments
                 aiInstruction.value = ""
+                if (response.library_attachments.isNotEmpty()) {
+                    snackbar.showSnackbar(
+                        "Kütüphane eki: " + response.library_attachments.joinToString { it.filename },
+                    )
+                }
             } catch (e: Exception) {
                 snackbar.showSnackbar(e.message ?: "AI taslağı oluşturulamadı")
             } finally {
@@ -1071,6 +1260,9 @@ fun ComposeMailScreen(
                         to_email = to,
                         subject = subject.value.trim(),
                         body = text,
+                        html_body = htmlBody.value,
+                        library_file_ids = libraryAttachments.value.map { it.id },
+                        attachment = pendingAttachment.value,
                     ),
                 )
                 snackbar.showSnackbar(response.message)
@@ -1140,6 +1332,31 @@ fun ComposeMailScreen(
                 enabled = !sending.value && !aiLoading.value,
             )
 
+            if (libraryAttachments.value.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                Text("Kütüphane ekleri", style = MaterialTheme.typography.labelMedium)
+                Spacer(Modifier.height(4.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                ) {
+                    libraryAttachments.value.forEach { item ->
+                        AssistChip(onClick = {}, label = { Text(item.filename) })
+                    }
+                }
+            }
+
+            if (pendingAttachmentName.value != null) {
+                Spacer(Modifier.height(8.dp))
+                AssistChip(
+                    onClick = {
+                        pendingAttachmentName.value = null
+                        pendingAttachment.value = null
+                    },
+                    label = { Text("Ek: ${pendingAttachmentName.value} (kaldır)") },
+                )
+            }
+
             if (showAiPanel.value) {
                 Spacer(Modifier.height(16.dp))
                 Card(
@@ -1156,7 +1373,7 @@ fun ComposeMailScreen(
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            "İpucu yazın; AI yeni mail metnini oluştursun.",
+                            "İpucu yazın; tablo/grafik veya “teklif.pdf ekle” diyebilirsiniz.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -1213,15 +1430,29 @@ fun ComposeMailScreen(
             }
 
             Spacer(Modifier.height(16.dp))
-            Button(
-                onClick = { sendMail() },
-                enabled = !sending.value && !aiLoading.value,
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                if (sending.value) {
-                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                } else {
-                    Text("Gönder")
+                OutlinedButton(
+                    onClick = { attachPicker.launch(arrayOf("*/*")) },
+                    enabled = !sending.value && !aiLoading.value,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Icon(Icons.Default.AttachFile, contentDescription = null)
+                    Spacer(Modifier.padding(4.dp))
+                    Text("Dosya ekle")
+                }
+                Button(
+                    onClick = { sendMail() },
+                    enabled = !sending.value && !aiLoading.value,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    if (sending.value) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    } else {
+                        Text("Gönder")
+                    }
                 }
             }
         }

@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -24,7 +26,7 @@ fun MainScreen(
     sessionManager: SessionManager,
     onLogout: () -> Unit,
 ) {
-    // 0 = Mail (giriş sonrası varsayılan), 1 = Sohbet, 2 = Ayarlar
+    // 0 Mail, 1 Takvim, 2 Dosyalar, 3 Sohbet, 4 Ayarlar
     val selectedTab = rememberSaveable { mutableIntStateOf(0) }
 
     Scaffold(
@@ -39,12 +41,24 @@ fun MainScreen(
                 NavigationBarItem(
                     selected = selectedTab.intValue == 1,
                     onClick = { selectedTab.intValue = 1 },
-                    icon = { Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = "Sohbet") },
-                    label = { Text("Sohbet") },
+                    icon = { Icon(Icons.Default.Event, contentDescription = "Takvim") },
+                    label = { Text("Takvim") },
                 )
                 NavigationBarItem(
                     selected = selectedTab.intValue == 2,
                     onClick = { selectedTab.intValue = 2 },
+                    icon = { Icon(Icons.Default.Folder, contentDescription = "Dosyalar") },
+                    label = { Text("Dosyalar") },
+                )
+                NavigationBarItem(
+                    selected = selectedTab.intValue == 3,
+                    onClick = { selectedTab.intValue = 3 },
+                    icon = { Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = "Sohbet") },
+                    label = { Text("Sohbet") },
+                )
+                NavigationBarItem(
+                    selected = selectedTab.intValue == 4,
+                    onClick = { selectedTab.intValue = 4 },
                     icon = { Icon(Icons.Default.Settings, contentDescription = "Ayarlar") },
                     label = { Text("Ayarlar") },
                 )
@@ -56,7 +70,15 @@ fun MainScreen(
                 apiClient = apiClient,
                 modifier = Modifier.fillMaxSize().padding(padding),
             )
-            1 -> ChatScreen(
+            1 -> CalendarScreen(
+                apiClient = apiClient,
+                modifier = Modifier.fillMaxSize().padding(padding),
+            )
+            2 -> FileLibraryScreen(
+                apiClient = apiClient,
+                modifier = Modifier.fillMaxSize().padding(padding),
+            )
+            3 -> ChatScreen(
                 apiClient = apiClient,
                 modifier = Modifier.fillMaxSize().padding(padding),
             )

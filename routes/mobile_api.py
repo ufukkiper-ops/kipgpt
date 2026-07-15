@@ -556,11 +556,24 @@ def api_mail_send_reply(user_id):
         return jsonify({"error": "Mail hesabı bağlı değil."}), 400
 
     payload = request.get_json(silent=True) or {}
-    sender = (payload.get("sender") or "").strip()
-    subject = (payload.get("subject") or "").strip()
-    final_reply = (payload.get("final_reply") or "").strip()
-    cc_email = (payload.get("cc_email") or "").strip()
-    bcc_email = (payload.get("bcc_email") or "").strip()
+    form = request.form if request.form else {}
+
+    def _get(key, default=""):
+        if key in payload and payload.get(key) is not None:
+            return payload.get(key)
+        return form.get(key, default)
+
+    sender = str(_get("sender") or "").strip()
+    subject = str(_get("subject") or "").strip()
+    final_reply = str(_get("final_reply") or "").strip()
+    cc_email = str(_get("cc_email") or "").strip()
+    bcc_email = str(_get("bcc_email") or "").strip()
+    html_body = str(_get("html_body") or "").strip()
+
+    library_ids = payload.get("library_file_ids") if isinstance(payload.get("library_file_ids"), list) else None
+    if library_ids is None:
+        raw_ids = str(_get("library_file_ids") or "").strip()
+        library_ids = [part.strip() for part in raw_ids.split(",") if part.strip()] if raw_ids else []
 
     if not sender:
         return jsonify({"error": "Alıcı gerekli."}), 400
@@ -568,13 +581,38 @@ def api_mail_send_reply(user_id):
         return jsonify({"error": "Yanıt metni boş."}), 400
 
     try:
+        from services.file_service import parse_uploaded_attachment
+        from services.file_library_service import load_attachments
+        import base64
+
+        attachments = []
+        uploaded = request.files.get("attachment") if request.files else None
+        if uploaded and uploaded.filename:
+            parsed = parse_uploaded_attachment(uploaded)
+            if parsed:
+                attachments.append(parsed)
+        elif isinstance(payload.get("attachment"), dict):
+            att = payload["attachment"]
+            data_b64 = att.get("data_base64") or att.get("data") or ""
+            if data_b64:
+                attachments.append({
+                    "filename": att.get("filename") or "ek",
+                    "mimetype": att.get("mimetype") or "application/octet-stream",
+                    "data": base64.b64decode(data_b64),
+                })
+
+        if library_ids:
+            attachments.extend(load_attachments(user, library_ids))
+
         send_reply_mail(
             mail_config,
             to_email=sender,
             subject=f"Re: {subject}" if subject else "Re:",
             body=final_reply,
+            attachments=attachments or None,
             cc=cc_email,
             bcc=bcc_email,
+            html_body=html_body or None,
         )
     except Exception as e:
         return jsonify({"error": f"E-posta gönderilirken hata: {str(e)}"}), 500
@@ -637,11 +675,24 @@ def api_mail_send_new(user_id):
         return jsonify({"error": "Mail hesabı bağlı değil."}), 400
 
     payload = request.get_json(silent=True) or {}
-    to_email = (payload.get("to_email") or "").strip()
-    subject = (payload.get("subject") or "").strip()
-    body = (payload.get("body") or payload.get("new_body") or "").strip()
-    cc_email = (payload.get("cc_email") or "").strip()
-    bcc_email = (payload.get("bcc_email") or "").strip()
+    form = request.form if request.form else {}
+
+    def _get(key, default=""):
+        if key in payload and payload.get(key) is not None:
+            return payload.get(key)
+        return form.get(key, default)
+
+    to_email = str(_get("to_email") or "").strip()
+    subject = str(_get("subject") or "").strip()
+    body = str(_get("body") or _get("new_body") or "").strip()
+    cc_email = str(_get("cc_email") or "").strip()
+    bcc_email = str(_get("bcc_email") or "").strip()
+    html_body = str(_get("html_body") or "").strip()
+
+    library_ids = payload.get("library_file_ids") if isinstance(payload.get("library_file_ids"), list) else None
+    if library_ids is None:
+        raw_ids = str(_get("library_file_ids") or "").strip()
+        library_ids = [part.strip() for part in raw_ids.split(",") if part.strip()] if raw_ids else []
 
     if not to_email:
         return jsonify({"error": "Alıcı gerekli."}), 400
@@ -649,13 +700,38 @@ def api_mail_send_new(user_id):
         return jsonify({"error": "Mail metni boş."}), 400
 
     try:
+        from services.file_service import parse_uploaded_attachment
+        from services.file_library_service import load_attachments
+        import base64
+
+        attachments = []
+        uploaded = request.files.get("attachment") if request.files else None
+        if uploaded and uploaded.filename:
+            parsed = parse_uploaded_attachment(uploaded)
+            if parsed:
+                attachments.append(parsed)
+        elif isinstance(payload.get("attachment"), dict):
+            att = payload["attachment"]
+            data_b64 = att.get("data_base64") or att.get("data") or ""
+            if data_b64:
+                attachments.append({
+                    "filename": att.get("filename") or "ek",
+                    "mimetype": att.get("mimetype") or "application/octet-stream",
+                    "data": base64.b64decode(data_b64),
+                })
+
+        if library_ids:
+            attachments.extend(load_attachments(user, library_ids))
+
         send_new_mail(
             mail_config,
             to_email=to_email,
             subject=subject,
             body=body,
+            attachments=attachments or None,
             cc=cc_email,
             bcc=bcc_email,
+            html_body=html_body or None,
         )
     except Exception as e:
         return jsonify({"error": f"E-posta gönderilirken hata: {str(e)}"}), 500
@@ -726,6 +802,56 @@ def api_calendar_list(user_id):
     })
 
 
+@mobile_api_bp.route("/calendar/events", methods=["POST"])
+@require_api_user
+def api_calendar_create(user_id):
+    user = find_user_by_id(user_id)
+    if not user:
+        return jsonify({"error": "Kullanıcı bulunamadı."}), 404
+    from services.calendar_service import create_event
+    data = request.get_json(silent=True) or {}
+    try:
+        event, _ = create_event(user, data)
+        return jsonify({"event": event})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@mobile_api_bp.route("/calendar/events/<event_id>", methods=["PATCH"])
+@require_api_user
+def api_calendar_update(user_id, event_id):
+    user = find_user_by_id(user_id)
+    if not user:
+        return jsonify({"error": "Kullanıcı bulunamadı."}), 404
+    from services.calendar_service import update_event
+    data = request.get_json(silent=True) or {}
+    try:
+        event, _ = update_event(user, event_id, data)
+        return jsonify({"event": event})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@mobile_api_bp.route("/calendar/events/<event_id>", methods=["DELETE"])
+@require_api_user
+def api_calendar_delete(user_id, event_id):
+    user = find_user_by_id(user_id)
+    if not user:
+        return jsonify({"error": "Kullanıcı bulunamadı."}), 404
+    from services.calendar_service import delete_event
+    try:
+        delete_event(user, event_id)
+        return jsonify({"ok": True})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @mobile_api_bp.route("/files", methods=["GET"])
 @require_api_user
 def api_files_list(user_id):
@@ -734,3 +860,58 @@ def api_files_list(user_id):
         return jsonify({"error": "Kullanıcı bulunamadı."}), 404
     from services.file_library_service import list_files
     return jsonify({"files": list_files(user)})
+
+
+@mobile_api_bp.route("/files", methods=["POST"])
+@require_api_user
+def api_files_upload(user_id):
+    user = find_user_by_id(user_id)
+    if not user:
+        return jsonify({"error": "Kullanıcı bulunamadı."}), 404
+    from services.file_library_service import add_file
+    uploaded = request.files.get("file")
+    note = (request.form.get("note") or "").strip()
+    try:
+        item, _ = add_file(user, uploaded, note=note)
+        return jsonify({"file": item})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@mobile_api_bp.route("/files/<file_id>", methods=["DELETE"])
+@require_api_user
+def api_files_delete(user_id, file_id):
+    user = find_user_by_id(user_id)
+    if not user:
+        return jsonify({"error": "Kullanıcı bulunamadı."}), 404
+    from services.file_library_service import delete_file
+    try:
+        delete_file(user, file_id)
+        return jsonify({"ok": True})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@mobile_api_bp.route("/files/<file_id>/download", methods=["GET"])
+@require_api_user
+def api_files_download(user_id, file_id):
+    user = find_user_by_id(user_id)
+    if not user:
+        return jsonify({"error": "Kullanıcı bulunamadı."}), 404
+    from services.file_library_service import get_file, load_attachment
+    try:
+        if not get_file(user, file_id):
+            return jsonify({"error": "Dosya bulunamadı."}), 404
+        attachment = load_attachment(user, file_id)
+        return send_file(
+            BytesIO(attachment["data"]),
+            mimetype=attachment.get("mimetype") or "application/octet-stream",
+            as_attachment=True,
+            download_name=attachment["filename"],
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 404

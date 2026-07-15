@@ -11,6 +11,7 @@ import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Multipart
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Part
@@ -96,6 +97,41 @@ interface KipGptApi {
 
     @POST("mail/send-new")
     suspend fun sendNewMail(@Body body: MailSendNewRequest): MailSendNewResponse
+
+    @POST("mail/summary")
+    suspend fun mailSummary(@Body body: MailSummaryRequest): MailSummaryResponse
+
+    @GET("calendar/events")
+    suspend fun calendarEvents(): CalendarEventsResponse
+
+    @POST("calendar/events")
+    suspend fun createCalendarEvent(@Body body: CalendarCreateRequest): CalendarEventResponse
+
+    @PATCH("calendar/events/{id}")
+    suspend fun updateCalendarEvent(
+        @Path("id") id: String,
+        @Body body: CalendarUpdateRequest,
+    ): CalendarEventResponse
+
+    @DELETE("calendar/events/{id}")
+    suspend fun deleteCalendarEvent(@Path("id") id: String): Map<String, Boolean>
+
+    @GET("files")
+    suspend fun files(): FilesResponse
+
+    @Multipart
+    @POST("files")
+    suspend fun uploadFile(
+        @Part file: MultipartBody.Part,
+        @Part("note") note: RequestBody,
+    ): FileUploadResponse
+
+    @DELETE("files/{id}")
+    suspend fun deleteFile(@Path("id") id: String): Map<String, Boolean>
+
+    @GET("files/{id}/download")
+    @Streaming
+    suspend fun downloadLibraryFile(@Path("id") id: String): ResponseBody
 }
 
 class ApiClient(private var token: String?, baseUrl: String) {
