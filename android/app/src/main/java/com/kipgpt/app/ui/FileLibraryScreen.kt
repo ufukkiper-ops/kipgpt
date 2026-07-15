@@ -175,7 +175,7 @@ fun FileLibraryScreen(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Icon(Icons.Filled.UploadFile, contentDescription = null)
-                    Spacer(Modifier.padding(4.dp))
+                    Spacer(Modifier.width(8.dp))
                     Text(if (uploading.value) "Yükleniyor..." else "Dosya yükle")
                 }
 
@@ -208,17 +208,19 @@ fun FileLibraryScreen(
                                         IconButton(onClick = {
                                             scope.launch {
                                                 try {
-                                                    val body = apiClient.api.downloadLibraryFile(file.id)
-                                                    body.use { response ->
-                                                        val bytes = response.bytes()
-                                                        val saved = AttachmentSaver.saveToDownloads(
-                                                            context = context,
-                                                            filename = file.filename,
-                                                            bytes = bytes,
-                                                            mime = file.mimetype,
-                                                        )
-                                                        snackbar.showSnackbar("İndirildi: $saved")
+                                                    val saved = withContext(Dispatchers.IO) {
+                                                        val body = apiClient.api.downloadLibraryFile(file.id)
+                                                        body.use { response ->
+                                                            val bytes = response.bytes()
+                                                            AttachmentSaver.saveToDownloads(
+                                                                context = context,
+                                                                filename = file.filename,
+                                                                bytes = bytes,
+                                                                mime = file.mimetype,
+                                                            )
+                                                        }
                                                     }
+                                                    snackbar.showSnackbar("İndirildi: $saved")
                                                 } catch (e: Exception) {
                                                     snackbar.showSnackbar(e.message ?: "İndirilemedi")
                                                 }

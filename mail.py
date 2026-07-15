@@ -1,9 +1,7 @@
 import base64
 import email
 import imaplib
-import io
 import mimetypes
-import os
 import re
 import smtplib
 from datetime import datetime

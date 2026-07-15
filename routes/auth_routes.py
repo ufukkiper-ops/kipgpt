@@ -21,7 +21,6 @@ from users import (
     link_google_mail_to_user,
     load_users,
     save_users,
-    ensure_dev_quick_user,
 )
 
 auth_bp = Blueprint("auth", __name__)

@@ -11,9 +11,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -207,7 +207,7 @@ fun CalendarScreen(
                                             }
                                         }) {
                                             Icon(
-                                                if (event.done) Icons.Filled.Undo else Icons.Filled.Check,
+                                                if (event.done) Icons.AutoMirrored.Filled.Undo else Icons.Filled.Check,
                                                 contentDescription = "Tamamla",
                                             )
                                         }

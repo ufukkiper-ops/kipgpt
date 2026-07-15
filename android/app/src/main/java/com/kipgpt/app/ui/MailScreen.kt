@@ -49,13 +49,13 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -64,6 +64,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -71,6 +72,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -471,21 +473,10 @@ fun MailDetailScreen(
     val scope = rememberCoroutineScope()
     val speechHelper = remember { SpeechHelper(context) }
 
-    val micPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) { granted ->
-        val target = pendingVoiceTarget.value
-        pendingVoiceTarget.value = null
-        if (granted && target != null) {
-            startVoiceInputFor(target, skipPermissionCheck = true)
-        } else if (!granted) {
-            scope.launch { snackbar.showSnackbar("Mikrofon izni gerekli") }
-        }
-    }
-
     fun startVoiceInputFor(
         target: String,
         skipPermissionCheck: Boolean = false,
+        launchPermission: (String) -> Unit = {},
     ) {
         if (!speechHelper.isListenAvailable()) {
             scope.launch {
@@ -498,7 +489,7 @@ fun MailDetailScreen(
             != PackageManager.PERMISSION_GRANTED
         ) {
             pendingVoiceTarget.value = target
-            micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            launchPermission(Manifest.permission.RECORD_AUDIO)
             return
         }
 
@@ -536,6 +527,30 @@ fun MailDetailScreen(
         if (!started) {
             setListening(false)
         }
+    }
+
+    val startVoiceUpdated = rememberUpdatedState<(String, Boolean) -> Unit> { target, skip ->
+        startVoiceInputFor(target, skipPermissionCheck = skip)
+    }
+
+    val micPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        val target = pendingVoiceTarget.value
+        pendingVoiceTarget.value = null
+        if (granted && target != null) {
+            startVoiceUpdated.value(target, true)
+        } else if (!granted) {
+            scope.launch { snackbar.showSnackbar("Mikrofon izni gerekli") }
+        }
+    }
+
+    fun requestVoiceInput(target: String) {
+        startVoiceInputFor(
+            target = target,
+            skipPermissionCheck = false,
+            launchPermission = { perm -> micPermissionLauncher.launch(perm) },
+        )
     }
 
     LaunchedEffect(mail.id, folder) {
@@ -577,21 +592,23 @@ fun MailDetailScreen(
         scope.launch {
             downloadingIndex.value = att.index
             try {
-                val body = apiClient.api.downloadAttachment(
-                    mailId = mailState.value.id,
-                    index = att.index,
-                    folder = folder,
-                )
-                body.use { response ->
-                    val bytes = response.bytes()
-                    val savedName = AttachmentSaver.saveToDownloads(
-                        context = context,
-                        filename = att.filename,
-                        bytes = bytes,
-                        mime = att.mime,
+                val savedName = withContext(Dispatchers.IO) {
+                    val body = apiClient.api.downloadAttachment(
+                        mailId = mailState.value.id,
+                        index = att.index,
+                        folder = folder,
                     )
-                    snackbar.showSnackbar("İndirildi: $savedName")
+                    body.use { response ->
+                        val bytes = response.bytes()
+                        AttachmentSaver.saveToDownloads(
+                            context = context,
+                            filename = att.filename,
+                            bytes = bytes,
+                            mime = att.mime,
+                        )
+                    }
                 }
+                snackbar.showSnackbar("İndirildi: $savedName")
             } catch (e: Exception) {
                 snackbar.showSnackbar(e.message ?: "Ek indirilemedi")
             } finally {
@@ -856,7 +873,7 @@ fun MailDetailScreen(
                         label = { Text("Dil") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = langMenuOpen.value) },
                         modifier = Modifier
-                            .menuAnchor()
+                            .menuAnchor(type = MenuAnchorType.PrimaryNotEditable)
                             .fillMaxWidth(),
                         enabled = !loading.value && !detailLoading.value,
                     )
@@ -993,7 +1010,7 @@ fun MailDetailScreen(
                         } else {
                             Icon(Icons.Default.Download, contentDescription = null)
                         }
-                        Spacer(Modifier.padding(horizontal = 4.dp))
+                        Spacer(Modifier.width(8.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 att.filename.ifBlank { "ek" },
@@ -1053,7 +1070,7 @@ fun MailDetailScreen(
                                                 speechHelper.stopListening()
                                                 listeningInstruction.value = false
                                             } else {
-                                                startVoiceInputFor("instruction")
+                                                requestVoiceInput("instruction")
                                             }
                                         },
                                     )
@@ -1110,7 +1127,7 @@ fun MailDetailScreen(
                                                 speechHelper.stopListening()
                                                 listeningRevise.value = false
                                             } else {
-                                                startVoiceInputFor("revise")
+                                                requestVoiceInput("revise")
                                             }
                                         },
                                     )
@@ -1440,7 +1457,7 @@ fun ComposeMailScreen(
                     modifier = Modifier.weight(1f),
                 ) {
                     Icon(Icons.Default.AttachFile, contentDescription = null)
-                    Spacer(Modifier.padding(4.dp))
+                    Spacer(Modifier.width(8.dp))
                     Text("Dosya ekle")
                 }
                 Button(

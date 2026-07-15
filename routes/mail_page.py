@@ -13,7 +13,6 @@ from services.mail_config import MAIL_PRESETS
 from services.mail_settings import SENSITIVITY_PRESETS, get_mail_settings, save_mail_settings
 from services.mail_contacts import (
     get_mail_contacts,
-    remember_contacts_from_fields,
     remember_contacts_from_mails,
 )
 from services.translate_service import resolve_lang, supported_languages, translate_mail_content

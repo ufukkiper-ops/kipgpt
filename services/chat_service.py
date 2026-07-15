@@ -1,9 +1,6 @@
 import os
-import base64
 import re
 
-from docx import Document
-from openpyxl import load_workbook
 from pypdf import PdfReader
 from openai import OpenAI
 
