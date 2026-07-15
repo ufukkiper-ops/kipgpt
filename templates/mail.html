@@ -336,7 +336,7 @@
                                     <label class="attach-btn" title="Dosya ekle">
                                         <span class="material-icons-outlined">attach_file</span>
                                         Ekle
-                                        <input type="file" name="attachment" class="mail-attach-input" id="manual-reply-file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" hidden>
+                                        <input type="file" name="attachment" class="mail-attach-input" id="manual-reply-file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt">
                                     </label>
                                     <button type="button" class="action-btn" id="manual-reply-cancel">Vazgeç</button>
                                     <button type="submit" class="icon-round-btn icon-round-btn-send send-reply-btn" title="Gönder">
@@ -461,7 +461,7 @@
                 <label class="attach-btn" title="Dosya ekle">
                     <span class="material-icons-outlined">attach_file</span>
                     Ekle
-                    <input type="file" name="attachment" id="compose-file" class="mail-attach-input" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" hidden>
+                    <input type="file" name="attachment" id="compose-file" class="mail-attach-input" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt">
                 </label>
                 <button type="button" class="icon-round-btn icon-round-btn-tonal" id="compose-ai-toggle" title="AI ile yaz">
                     <span class="material-icons-outlined">auto_awesome</span>
@@ -712,8 +712,8 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/speech.js') }}?v=1"></script>
-<script src="{{ url_for('static', filename='js/mail.js') }}?v=49"></script>
+<script src="{{ url_for('static', filename='js/speech.js') }}?v=2"></script>
+<script src="{{ url_for('static', filename='js/mail.js') }}?v=50"></script>
 <script id="provider-data" type="application/json">{{ providers|tojson }}</script>
 <script id="sensitivity-data" type="application/json">{{ sensitivity_presets|tojson }}</script>
 {% endblock %}
