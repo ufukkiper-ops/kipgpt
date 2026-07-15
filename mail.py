@@ -710,12 +710,16 @@ def fetch_attachment(config, folder, mail_id, index):
         mail.logout()
 
 
-def send_reply_mail(config, to_email, subject, body, attachments=None, cc=None, bcc=None):
-    return _send_mail(config, to_email, subject, body, attachments, cc=cc, bcc=bcc)
+def send_reply_mail(config, to_email, subject, body, attachments=None, cc=None, bcc=None, html_body=None):
+    return _send_mail(
+        config, to_email, subject, body, attachments, cc=cc, bcc=bcc, html_body=html_body
+    )
 
 
-def send_new_mail(config, to_email, subject, body, attachments=None, cc=None, bcc=None):
-    return _send_mail(config, to_email, subject, body, attachments, cc=cc, bcc=bcc)
+def send_new_mail(config, to_email, subject, body, attachments=None, cc=None, bcc=None, html_body=None):
+    return _send_mail(
+        config, to_email, subject, body, attachments, cc=cc, bcc=bcc, html_body=html_body
+    )
 
 
 def _parse_recipient_list(value):
@@ -755,7 +759,7 @@ def _attach_files(msg, attachments):
         msg.attach(part)
 
 
-def _send_mail(config, to_email, subject, body, attachments=None, cc=None, bcc=None):
+def _send_mail(config, to_email, subject, body, attachments=None, cc=None, bcc=None, html_body=None):
     to_list = _parse_recipient_list(to_email)
     cc_list = _parse_recipient_list(cc)
     bcc_list = _parse_recipient_list(bcc)
@@ -763,13 +767,21 @@ def _send_mail(config, to_email, subject, body, attachments=None, cc=None, bcc=N
     if not to_list:
         raise ValueError("Alıcı e-posta adresi gerekli.")
 
-    msg = MIMEMultipart()
+    msg = MIMEMultipart("mixed")
     msg["From"] = config["email"]
     msg["To"] = ", ".join(to_list)
     if cc_list:
         msg["Cc"] = ", ".join(cc_list)
     msg["Subject"] = subject
-    msg.attach(MIMEText(body, "plain", "utf-8"))
+
+    if html_body:
+        alternative = MIMEMultipart("alternative")
+        alternative.attach(MIMEText(body or "", "plain", "utf-8"))
+        alternative.attach(MIMEText(html_body, "html", "utf-8"))
+        msg.attach(alternative)
+    else:
+        msg.attach(MIMEText(body or "", "plain", "utf-8"))
+
     _attach_files(msg, attachments)
 
     recipients = list(dict.fromkeys(to_list + cc_list + bcc_list))

@@ -455,6 +455,9 @@
     function openMail(mail) {
         if (!mail) return;
 
+        document.body.dataset.activeMailId = mail.id || "";
+        document.dispatchEvent(new CustomEvent("kipgpt:mail-opened", { detail: { mail: mail } }));
+
         document.querySelectorAll(".gmail-row.selected").forEach(function (row) {
             row.classList.remove("selected");
         });
@@ -898,8 +901,21 @@
                     composeBody.value = data.draft || "";
                     composeBody.focus();
                 }
+                if (window.KipMailTools && typeof KipMailTools.setComposeLibraryAttachments === "function") {
+                    KipMailTools.setComposeLibraryAttachments(
+                        data.library_attachments || [],
+                        data.html_body || ""
+                    );
+                } else {
+                    const htmlField = document.getElementById("compose-html-body");
+                    if (htmlField) htmlField.value = data.html_body || "";
+                }
                 if (composeAiInstruction) {
                     composeAiInstruction.value = "";
+                }
+                if ((data.library_attachments || []).length) {
+                    const names = data.library_attachments.map(function (a) { return a.filename; }).join(", ");
+                    window.alert("Kütüphaneden eklenecek dosyalar: " + names);
                 }
             } catch (err) {
                 alert(err.message || "AI taslağı oluşturulurken hata oluştu.");

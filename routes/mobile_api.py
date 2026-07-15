@@ -4,7 +4,17 @@ from io import BytesIO
 from services.api_auth import create_api_token, require_api_user
 from services.mail_accounts import list_accounts_for_ui, resolve_active_mail_config
 from services.mail_settings import get_mail_settings
-from services.mail_ui import FOLDERS, download_mail_attachment, filter_mails, generate_ai_mail_reply, generate_ai_new_mail, load_folder_mails, load_single_mail, mail_content_preview
+from services.mail_ui import (
+    FOLDERS,
+    download_mail_attachment,
+    filter_mails,
+    generate_ai_mail_reply,
+    generate_ai_new_mail,
+    load_folder_mails,
+    load_single_mail,
+    mail_content_preview,
+    _normalize_ai_result,
+)
 from services.translate_service import translate_mail_content
 from mail import send_new_mail, send_reply_mail
 from services.chat_service import (
@@ -496,13 +506,16 @@ def api_mail_ai_reply(user_id):
         return jsonify({"error": "Mail içeriği bulunamadı."}), 400
 
     try:
-        draft = generate_ai_mail_reply(
-            sender,
-            subject,
-            content,
-            user_instruction=user_instruction,
-            current_draft=current_draft,
-            revize_notu=revize_notu,
+        result = _normalize_ai_result(
+            generate_ai_mail_reply(
+                sender,
+                subject,
+                content,
+                user_instruction=user_instruction,
+                current_draft=current_draft,
+                revize_notu=revize_notu,
+                user=user,
+            )
         )
     except RuntimeError as e:
         return jsonify({"error": str(e)}), 503
@@ -510,7 +523,10 @@ def api_mail_ai_reply(user_id):
         return jsonify({"error": f"Yanıt oluşturulurken hata: {str(e)}"}), 500
 
     return jsonify({
-        "draft": draft,
+        "draft": result["body"],
+        "html_body": result.get("html_body") or "",
+        "library_attachments": result.get("library_attachments") or [],
+        "library_file_ids": result.get("library_file_ids") or [],
         "mail": {
             "id": mail_id,
             "sender": sender,
@@ -577,19 +593,28 @@ def api_mail_ai_compose(user_id):
         }), 400
 
     try:
-        draft = generate_ai_new_mail(
-            to_email=to_email,
-            subject=subject,
-            user_instruction=user_instruction,
-            current_draft=current_draft,
-            revize_notu=revize_notu,
+        user = find_user_by_id(user_id)
+        result = _normalize_ai_result(
+            generate_ai_new_mail(
+                to_email=to_email,
+                subject=subject,
+                user_instruction=user_instruction,
+                current_draft=current_draft,
+                revize_notu=revize_notu,
+                user=user,
+            )
         )
     except RuntimeError as e:
         return jsonify({"error": str(e)}), 503
     except Exception as e:
         return jsonify({"error": f"Taslak oluşturulurken hata: {e}"}), 500
 
-    return jsonify({"draft": draft})
+    return jsonify({
+        "draft": result["body"],
+        "html_body": result.get("html_body") or "",
+        "library_attachments": result.get("library_attachments") or [],
+        "library_file_ids": result.get("library_file_ids") or [],
+    })
 
 
 @mobile_api_bp.route("/mail/send-new", methods=["POST"])
@@ -631,3 +656,73 @@ def api_mail_send_new(user_id):
         "success": True,
         "message": f"{to_email} adresine mail gönderildi.",
     })
+
+
+@mobile_api_bp.route("/mail/summary", methods=["POST"])
+@require_api_user
+def api_mail_summary(user_id):
+    user = find_user_by_id(user_id)
+    if not user:
+        return jsonify({"error": "Kullanıcı bulunamadı."}), 404
+
+    payload = request.get_json(silent=True) or {}
+    sender = (payload.get("sender") or "").strip()
+    subject = (payload.get("subject") or "").strip()
+    content = (payload.get("content") or "").strip()
+    mail_id = (payload.get("mail_id") or "").strip()
+    folder = (payload.get("folder") or "inbox").strip()
+    create_reminders = bool(payload.get("create_reminders"))
+
+    if not content and mail_id:
+        mail_config, _active_account, _settings = _mail_context(user)
+        if mail_config:
+            try:
+                mail = load_single_mail(folder, mail_config, mail_id)
+                sender = sender or mail.get("sender", "")
+                subject = subject or mail.get("subject", "")
+                content = mail.get("content") or ""
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
+
+    if not content:
+        return jsonify({"error": "Özetlenecek içerik yok."}), 400
+
+    try:
+        from services.mail_enrich_service import summarize_mail
+        from services.calendar_service import create_events_from_actions
+
+        summary = summarize_mail(sender, subject, content)
+        created = []
+        if create_reminders:
+            actions = list(summary.get("reminders") or [])
+            for item in summary.get("action_items") or []:
+                actions.append({"title": item})
+            created, _ = create_events_from_actions(user, actions, source_mail_id=mail_id)
+        return jsonify({"summary": summary, "reminders_created": created})
+    except RuntimeError as e:
+        return jsonify({"error": str(e)}), 503
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@mobile_api_bp.route("/calendar/events", methods=["GET"])
+@require_api_user
+def api_calendar_list(user_id):
+    user = find_user_by_id(user_id)
+    if not user:
+        return jsonify({"error": "Kullanıcı bulunamadı."}), 404
+    from services.calendar_service import list_events, upcoming_reminders
+    return jsonify({
+        "events": list_events(user),
+        "reminders": upcoming_reminders(user),
+    })
+
+
+@mobile_api_bp.route("/files", methods=["GET"])
+@require_api_user
+def api_files_list(user_id):
+    user = find_user_by_id(user_id)
+    if not user:
+        return jsonify({"error": "Kullanıcı bulunamadı."}), 404
+    from services.file_library_service import list_files
+    return jsonify({"files": list_files(user)})

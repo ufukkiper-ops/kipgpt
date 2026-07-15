@@ -104,6 +104,23 @@
                 {% endfor %}
             </nav>
 
+            <div class="sidebar-tools">
+                <button class="folder-link tool-nav-btn" type="button" id="calendar-open-btn">
+                    <span class="material-icons-outlined">event</span>
+                    <span class="folder-label">Takvim</span>
+                    {% if calendar_reminders %}
+                    <span class="tool-badge">{{ calendar_reminders|length }}</span>
+                    {% endif %}
+                </button>
+                <button class="folder-link tool-nav-btn" type="button" id="files-open-btn">
+                    <span class="material-icons-outlined">folder_open</span>
+                    <span class="folder-label">Dosyalarım</span>
+                    {% if file_library %}
+                    <span class="tool-badge">{{ file_library|length }}</span>
+                    {% endif %}
+                </button>
+            </div>
+
             <div class="sidebar-bottom">
                 <button class="settings-btn" type="button" id="settings-btn">
                     <span class="material-icons-outlined">settings</span>
@@ -264,6 +281,10 @@
                                 <button type="button" class="translate-btn" data-lang="tr" title="Algılanan dilden Türkçe'ye çevir">Türkçe</button>
                                 <button type="button" class="translate-btn" data-lang="en" title="Detect language and translate to English">English</button>
                                 <button type="button" class="translate-btn" data-lang="de" title="Sprache erkennen und ins Deutsche übersetzen">Deutsch</button>
+                                <button type="button" class="translate-btn ai-summary-btn" id="ai-summary-btn" title="AI ile özetle ve yorumla">
+                                    <span class="material-icons-outlined">summarize</span>
+                                    AI Özet
+                                </button>
                             </div>
                         </div>
                         <div class="reader-meta">
@@ -280,6 +301,7 @@
 
                     <div class="reader-scroll-body">
                         <div class="reader-thread" id="reader-thread" hidden></div>
+                        <div class="mail-ai-summary" id="mail-ai-summary" hidden></div>
                         <div class="reader-body" id="reader-body"></div>
                         <div class="reader-attachments" id="reader-attachments" hidden></div>
                     </div>
@@ -351,7 +373,7 @@
                                 <span class="material-icons-outlined">auto_awesome</span>
                                 <h3>KipGPT ile Yanıt Oluştur</h3>
                             </div>
-                            <p class="draft-edit-hint">AI, yazdığınız ipucu doğrultusunda yanıt üretir. Örn: "Kısa ve net yaz", "Toplantıyı Perşembe 14:00 öner".</p>
+                            <p class="draft-edit-hint">Örn: "Kısa yaz", "Satış tablosu ekle", "teklif.pdf dosyasını ekle".</p>
                             <div class="ai-thinking" id="ai-thinking" hidden aria-live="polite">
                                 <span class="ai-thinking-text">Düşünüyor</span>
                                 <span class="ai-thinking-dots" aria-hidden="true">
@@ -432,7 +454,7 @@
                     <span class="material-icons-outlined">auto_awesome</span>
                     <h3>KipGPT ile Mail Yaz</h3>
                 </div>
-                <p class="draft-edit-hint">İpucu yazın; AI yeni mail metnini oluştursun. Örn: "Toplantı daveti, kısa ve resmi".</p>
+                <p class="draft-edit-hint">İpucu yazın; AI yeni mail metnini oluştursun. Tablo/grafik veya “fatura.pdf ekle” diyebilirsiniz.</p>
                 <div class="ai-thinking" id="compose-ai-thinking" hidden aria-live="polite">
                     <span class="ai-thinking-text">Düşünüyor</span>
                     <span class="ai-thinking-dots" aria-hidden="true">
@@ -457,6 +479,19 @@
             </div>
 
             <div id="compose-file-preview" class="compose-file-preview" hidden></div>
+            <div class="library-attach-box" id="compose-library-box">
+                <input type="hidden" name="html_body" id="compose-html-body" value="">
+                <div class="library-attach-chips" id="compose-library-chips"></div>
+                <div class="library-attach-picker">
+                    <label class="library-attach-label" for="compose-library-select">Kütüphaneden ekle</label>
+                    <select id="compose-library-select" multiple size="3" aria-label="Dosya kütüphanesi">
+                        {% for f in file_library %}
+                        <option value="{{ f.id }}">{{ f.filename }}</option>
+                        {% endfor %}
+                    </select>
+                    <div id="compose-library-ids"></div>
+                </div>
+            </div>
             <div class="compose-footer">
                 <label class="attach-btn" title="Dosya ekle">
                     <span class="material-icons-outlined">attach_file</span>
@@ -476,7 +511,49 @@
 
 <script id="mails-data" type="application/json">{{ mailler|tojson }}</script>
 <script id="mail-contacts-data" type="application/json">{{ mail_contacts|tojson }}</script>
-<script id="ai-draft-data" type="application/json">{{ {"yanit": ai_yaniti, "mail": secilen_mail}|tojson if ai_yaniti else "null" }}</script>
+<script id="ai-draft-data" type="application/json">{{ {"yanit": ai_yaniti, "mail": secilen_mail, "meta": ai_meta}|tojson if ai_yaniti else "null" }}</script>
+<script id="file-library-data" type="application/json">{{ file_library|tojson }}</script>
+<script id="calendar-reminders-data" type="application/json">{{ calendar_reminders|tojson }}</script>
+
+<div class="mail-dialog-overlay" id="calendar-overlay" hidden>
+    <div class="mail-dialog tool-dialog">
+        <div class="dialog-header">
+            <h2>Takvim & Hatırlatıcılar</h2>
+            <button class="icon-btn" type="button" id="calendar-close" title="Kapat">
+                <span class="material-icons-outlined">close</span>
+            </button>
+        </div>
+        <div class="dialog-body">
+            <form class="tool-form" id="calendar-create-form">
+                <input type="text" id="calendar-title" placeholder="Başlık" required>
+                <input type="datetime-local" id="calendar-start" title="Başlangıç / hatırlatma">
+                <textarea id="calendar-desc" rows="2" placeholder="Açıklama (isteğe bağlı)"></textarea>
+                <button type="submit" class="action-btn action-btn-ai">Ekle</button>
+            </form>
+            <div class="tool-list" id="calendar-list"></div>
+        </div>
+    </div>
+</div>
+
+<div class="mail-dialog-overlay" id="files-overlay" hidden>
+    <div class="mail-dialog tool-dialog">
+        <div class="dialog-header">
+            <h2>Dosya Kütüphanesi</h2>
+            <button class="icon-btn" type="button" id="files-close" title="Kapat">
+                <span class="material-icons-outlined">close</span>
+            </button>
+        </div>
+        <div class="dialog-body">
+            <p class="draft-edit-hint">Buraya yüklediğiniz dosyaları AI ile mail yazarken “şu dosyayı ekle” diyerek ekletebilirsiniz.</p>
+            <form class="tool-form" id="files-upload-form">
+                <input type="file" id="files-upload-input" required>
+                <input type="text" id="files-upload-note" placeholder="Kısa not (ör. fatura, teklif)">
+                <button type="submit" class="action-btn action-btn-ai">Yükle</button>
+            </form>
+            <div class="tool-list" id="files-list"></div>
+        </div>
+    </div>
+</div>
 
 <form id="spam-form" method="post" action="/mail?folder={{ folder }}{% if active_account_id %}&account={{ active_account_id }}{% endif %}" hidden>
     <input type="hidden" name="islem" value="spam">
@@ -713,7 +790,8 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/speech.js') }}?v=2"></script>
-<script src="{{ url_for('static', filename='js/mail.js') }}?v=50"></script>
+<script src="{{ url_for('static', filename='js/mail.js') }}?v=51"></script>
+<script src="{{ url_for('static', filename='js/mail-tools.js') }}?v=1"></script>
 <script id="provider-data" type="application/json">{{ providers|tojson }}</script>
 <script id="sensitivity-data" type="application/json">{{ sensitivity_presets|tojson }}</script>
 {% endblock %}

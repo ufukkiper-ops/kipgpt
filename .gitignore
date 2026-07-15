@@ -2,6 +2,7 @@
 google_client_secret.json
 users.json
 data.json
+user_files/
 __pycache__/
 *.pyc
 services/__pycache__/

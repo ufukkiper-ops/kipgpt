@@ -126,6 +126,7 @@ def mail_ai_compose():
     if "user" not in session:
         return jsonify({"error": "Giriş gerekli."}), 401
 
+    user = find_user_by_id(session.get("user"))
     data = request.get_json(silent=True) or {}
     to_email = (data.get("to_email") or "").strip()
     subject = (data.get("subject") or data.get("new_subject") or "").strip()
@@ -139,16 +140,26 @@ def mail_ai_compose():
         }), 400
 
     try:
-        from services.mail_ui import generate_ai_new_mail
+        from services.mail_ui import generate_ai_new_mail, _normalize_ai_result
 
-        draft = generate_ai_new_mail(
-            to_email=to_email,
-            subject=subject,
-            user_instruction=user_instruction,
-            current_draft=current_draft,
-            revize_notu=revize_notu,
+        result = _normalize_ai_result(
+            generate_ai_new_mail(
+                to_email=to_email,
+                subject=subject,
+                user_instruction=user_instruction,
+                current_draft=current_draft,
+                revize_notu=revize_notu,
+                user=user,
+            )
         )
-        return jsonify({"draft": draft})
+        return jsonify({
+            "draft": result["body"],
+            "html_body": result.get("html_body") or "",
+            "library_attachments": result.get("library_attachments") or [],
+            "library_file_ids": result.get("library_file_ids") or [],
+            "table": result.get("table"),
+            "chart": result.get("chart"),
+        })
     except RuntimeError as e:
         return jsonify({"error": str(e)}), 503
     except Exception as e:
@@ -164,6 +175,7 @@ def mail_page():
     success_message = ""
     ai_yaniti = ""
     secilen_mail = {}
+    ai_meta = {}
 
     folder = request.args.get("folder", "inbox")
     search = request.args.get("search", "").strip().lower()
@@ -238,7 +250,7 @@ def mail_page():
         if not mail_config:
             error = error or "Mail ayarları bulunamadı."
         else:
-            error, success_message, ai_yaniti, secilen_mail = handle_mail_action(
+            error, success_message, ai_yaniti, secilen_mail, ai_meta = handle_mail_action(
                 request.form, mail_config, request.files, user=user
             )
             if success_message and request.form.get("islem") in (
@@ -270,6 +282,12 @@ def mail_page():
     folder_label = FOLDER_LABELS.get(folder, folder_label)
     mail_css = load_mail_css(current_app.root_path)
 
+    from services.calendar_service import upcoming_reminders
+    from services.file_library_service import list_files
+
+    calendar_reminders = upcoming_reminders(user) if user else []
+    file_library = list_files(user) if user else []
+
     return render_template(
         "mail.html",
         title="Mail",
@@ -280,6 +298,7 @@ def mail_page():
         folder=folder,
         search=search,
         ai_yaniti=ai_yaniti,
+        ai_meta=ai_meta or {},
         secilen_mail=secilen_mail,
         mailler=mailler,
         mail_css=mail_css,
@@ -290,5 +309,7 @@ def mail_page():
         mail_settings=mail_settings,
         sensitivity_presets=SENSITIVITY_PRESETS,
         mail_contacts=mail_contacts,
-        ui_version="gmail-v44",
+        calendar_reminders=calendar_reminders,
+        file_library=file_library,
+        ui_version="gmail-v45",
     )

@@ -24,6 +24,8 @@ from services.chat_service import ask_gpt_mail_reply, get_client
 from services.mail_threads import expand_selected_mail_ids, group_mails_by_thread
 from services.mail_contacts import remember_contacts_from_fields
 from services.file_service import parse_uploaded_attachment
+from services.mail_enrich_service import wants_enrichment
+from services.file_library_service import load_attachments
 
 FOLDERS = [
     {"id": "inbox", "label": "Gelen Kutusu", "icon": "inbox"},
@@ -180,10 +182,29 @@ def generate_ai_mail_reply(
     user_instruction="",
     current_draft="",
     revize_notu="",
+    user=None,
+    enrich=None,
 ):
     client = get_client()
     if client is None:
         raise RuntimeError("Sunucuda OPENAI_API_KEY ayarlı değil.")
+
+    instruction = (revize_notu or user_instruction or "").strip()
+    should_enrich = enrich if enrich is not None else wants_enrichment(instruction)
+
+    if should_enrich:
+        from services.mail_enrich_service import generate_enriched_mail
+
+        return generate_enriched_mail(
+            user,
+            mode="reply",
+            sender=sender,
+            subject=subject,
+            content=content,
+            user_instruction=user_instruction,
+            current_draft=current_draft,
+            revize_notu=revize_notu,
+        )
 
     if revize_notu:
         prompt = f"""KULLANICI İPUCU / TALİMAT (ÖNCELİKLİ):
@@ -223,7 +244,12 @@ Konu: {subject}
 
 Bu maile profesyonel, kibar ve çözüm odaklı bir Türkçe yanıt yaz. Sadece gönderilecek yanıt metnini yaz."""
 
-    return ask_gpt_mail_reply(prompt)
+    return {
+        "body": ask_gpt_mail_reply(prompt),
+        "html_body": "",
+        "library_attachments": [],
+        "library_file_ids": [],
+    }
 
 
 def generate_ai_new_mail(
@@ -232,6 +258,8 @@ def generate_ai_new_mail(
     user_instruction="",
     current_draft="",
     revize_notu="",
+    user=None,
+    enrich=None,
 ):
     client = get_client()
     if client is None:
@@ -242,6 +270,21 @@ def generate_ai_new_mail(
     user_instruction = (user_instruction or "").strip()
     current_draft = (current_draft or "").strip()
     revize_notu = (revize_notu or "").strip()
+    instruction = (revize_notu or user_instruction or "").strip()
+    should_enrich = enrich if enrich is not None else wants_enrichment(instruction)
+
+    if should_enrich:
+        from services.mail_enrich_service import generate_enriched_mail
+
+        return generate_enriched_mail(
+            user,
+            mode="compose",
+            to_email=to_email,
+            subject=subject,
+            user_instruction=user_instruction,
+            current_draft=current_draft,
+            revize_notu=revize_notu,
+        )
 
     if revize_notu:
         prompt = f"""KULLANICI İPUCU / TALİMAT (ÖNCELİKLİ):
@@ -274,7 +317,52 @@ Konu: {subject or "(belirtilmedi)"}
 
 Kısa, kibar ve net bir gövde metni yaz. Sadece gönderilecek metni döndür."""
 
-    return ask_gpt_mail_reply(prompt)
+    return {
+        "body": ask_gpt_mail_reply(prompt),
+        "html_body": "",
+        "library_attachments": [],
+        "library_file_ids": [],
+    }
+
+
+def _normalize_ai_result(result):
+    if isinstance(result, dict):
+        body = (result.get("body") or result.get("draft") or "").strip()
+        return {
+            "body": body,
+            "html_body": (result.get("html_body") or "").strip(),
+            "library_attachments": result.get("library_attachments") or [],
+            "library_file_ids": result.get("library_file_ids") or [],
+            "table": result.get("table"),
+            "chart": result.get("chart"),
+        }
+    return {
+        "body": str(result or "").strip(),
+        "html_body": "",
+        "library_attachments": [],
+        "library_file_ids": [],
+        "table": None,
+        "chart": None,
+    }
+
+
+def _collect_outgoing_attachments(form, files, user):
+    attachments = []
+    if files:
+        uploaded = parse_uploaded_attachment(files.get("attachment"))
+        if uploaded:
+            attachments.append(uploaded)
+
+    library_ids = form.getlist("library_file_ids") if hasattr(form, "getlist") else []
+    if not library_ids:
+        raw = (form.get("library_file_ids") or "").strip()
+        if raw:
+            library_ids = [part.strip() for part in raw.split(",") if part.strip()]
+
+    if user and library_ids:
+        attachments.extend(load_attachments(user, library_ids))
+
+    return attachments
 
 
 def handle_mail_action(form, mail_config, files=None, user=None):
@@ -291,15 +379,21 @@ def handle_mail_action(form, mail_config, files=None, user=None):
     success_message = ""
     ai_yaniti = ""
     secilen_mail = {}
+    ai_meta = {}
 
     if islem == "olustur":
         try:
-            ai_yaniti = generate_ai_mail_reply(
-                sender,
-                subject,
-                content,
-                user_instruction=user_instruction,
+            result = _normalize_ai_result(
+                generate_ai_mail_reply(
+                    sender,
+                    subject,
+                    content,
+                    user_instruction=user_instruction,
+                    user=user,
+                )
             )
+            ai_yaniti = result["body"]
+            ai_meta = result
             secilen_mail = {
                 "id": mail_id,
                 "sender": sender,
@@ -311,13 +405,18 @@ def handle_mail_action(form, mail_config, files=None, user=None):
 
     elif islem == "revize_et":
         try:
-            ai_yaniti = generate_ai_mail_reply(
-                sender,
-                subject,
-                content,
-                current_draft=current_draft,
-                revize_notu=revize_notu,
+            result = _normalize_ai_result(
+                generate_ai_mail_reply(
+                    sender,
+                    subject,
+                    content,
+                    current_draft=current_draft,
+                    revize_notu=revize_notu,
+                    user=user,
+                )
             )
+            ai_yaniti = result["body"]
+            ai_meta = result
             secilen_mail = {
                 "id": mail_id,
                 "sender": sender,
@@ -395,20 +494,20 @@ def handle_mail_action(form, mail_config, files=None, user=None):
 
     elif islem == "gonder":
         final_reply = form.get("final_reply", "")
+        html_body = (form.get("html_body") or "").strip()
         cc_email = form.get("cc_email", "").strip()
         bcc_email = form.get("bcc_email", "").strip()
         try:
-            attachment = None
-            if files:
-                attachment = parse_uploaded_attachment(files.get("attachment"))
+            attachments = _collect_outgoing_attachments(form, files, user)
             send_reply_mail(
                 mail_config,
                 to_email=sender,
                 subject=f"Re: {subject}",
                 body=final_reply,
-                attachments=[attachment] if attachment else None,
+                attachments=attachments or None,
                 cc=cc_email,
                 bcc=bcc_email,
+                html_body=html_body or None,
             )
             if user:
                 remember_contacts_from_fields(
@@ -419,8 +518,9 @@ def handle_mail_action(form, mail_config, files=None, user=None):
                     own_email=mail_config.get("email"),
                 )
             success_message = f"{sender} adresine yanıt başarıyla postalandı!"
-            if attachment:
-                success_message += f" (Ek: {attachment['filename']})"
+            if attachments:
+                names = ", ".join(a["filename"] for a in attachments)
+                success_message += f" (Ek: {names})"
         except Exception as e:
             error = f"E-posta gönderilirken hata oluştu: {str(e)}"
 
@@ -430,20 +530,20 @@ def handle_mail_action(form, mail_config, files=None, user=None):
         bcc_email = form.get("bcc_email", "").strip()
         new_subject = form.get("new_subject", "").strip()
         new_body = form.get("new_body", "").strip()
+        html_body = (form.get("html_body") or "").strip()
         try:
             if not to_email:
                 raise ValueError("Alıcı e-posta adresi gerekli.")
-            attachment = None
-            if files:
-                attachment = parse_uploaded_attachment(files.get("attachment"))
+            attachments = _collect_outgoing_attachments(form, files, user)
             send_new_mail(
                 mail_config,
                 to_email=to_email,
                 subject=new_subject,
                 body=new_body,
-                attachments=[attachment] if attachment else None,
+                attachments=attachments or None,
                 cc=cc_email,
                 bcc=bcc_email,
+                html_body=html_body or None,
             )
             if user:
                 remember_contacts_from_fields(
@@ -454,12 +554,13 @@ def handle_mail_action(form, mail_config, files=None, user=None):
                     own_email=mail_config.get("email"),
                 )
             success_message = f"{to_email} adresine mail gönderildi!"
-            if attachment:
-                success_message += f" (Ek: {attachment['filename']})"
+            if attachments:
+                names = ", ".join(a["filename"] for a in attachments)
+                success_message += f" (Ek: {names})"
         except Exception as e:
             error = f"E-posta gönderilirken hata oluştu: {str(e)}"
 
-    return error, success_message, ai_yaniti, secilen_mail
+    return error, success_message, ai_yaniti, secilen_mail, ai_meta
 
 
 def get_imap_folder_name(folder, mail_config=None):

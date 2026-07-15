@@ -43,13 +43,25 @@
             <input type="text" name="bcc_email" placeholder="Bcc">
         </div>
 
-        <p class="draft-edit-hint">AI taslağını istediğiniz gibi düzenleyebilirsiniz. Göndermeden önce metni kontrol edin.</p>
+        <p class="draft-edit-hint">AI taslağını istediğiniz gibi düzenleyebilirsiniz. Tablo/grafik HTML olarak gönderilir; kütüphane ekleri aşağıda görünür.</p>
 
         <div class="speech-field-wrap">
             <textarea name="final_reply" class="ai-editor" id="ai-draft-editor" rows="10">{{ ai_yaniti }}</textarea>
             <button type="button" class="speech-mic-btn speech-field-mic" id="ai-draft-mic" title="Sesle yaz">
                 <span class="material-icons-outlined">mic</span>
             </button>
+        </div>
+
+        <input type="hidden" name="html_body" id="ai-html-body" value="">
+        <script type="application/json" id="ai-html-body-data">{{ (ai_meta.html_body if ai_meta else "")|tojson }}</script>
+        <div class="library-attach-chips" id="ai-library-chips">
+            {% if ai_meta and ai_meta.library_attachments %}
+                {% for item in ai_meta.library_attachments %}
+                <span class="library-chip">{{ item.filename }}
+                    <input type="hidden" name="library_file_ids" value="{{ item.id }}">
+                </span>
+                {% endfor %}
+            {% endif %}
         </div>
 
         <div id="reply-attach-preview" class="compose-file-preview" hidden></div>
