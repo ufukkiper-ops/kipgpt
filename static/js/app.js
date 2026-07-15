@@ -28,7 +28,9 @@ function showChatError(message) {
     if (!messages) return;
     const div = document.createElement("div");
     div.className = "msg msg-bot";
-    div.innerHTML = "<b>Hata:</b><br>" + escapeHtml(message);
+    div.innerHTML =
+        '<div class="msg-label">Hata</div>' +
+        '<div class="msg-text">' + escapeHtml(message) + "</div>";
     messages.appendChild(div);
     messages.scrollTop = messages.scrollHeight;
 }
@@ -99,17 +101,19 @@ function appendMessage(role, text, fileMeta) {
     const bodyHtml = escapeHtml(text).replace(/\n/g, "<br>");
 
     if (role === "user") {
-        div.innerHTML = `<b>${label}:</b><br>${bodyHtml}${fileHtml}`;
+        div.innerHTML =
+            `<div class="msg-label">${label}</div>` +
+            `<div class="msg-text">${bodyHtml}</div>${fileHtml}`;
     } else {
         div.innerHTML =
             `<div class="msg-bot-head">` +
-            `<b>${label}:</b>` +
+            `<b class="msg-label">${label}</b>` +
             (window.KipSpeech && KipSpeech.isSpeakSupported()
                 ? `<button type="button" class="speech-speak-btn msg-speak-btn" title="Dinle">` +
                   `<span class="speech-speak-icon">🔊</span></button>`
                 : "") +
             `</div>` +
-            `<div class="msg-bot-text">${bodyHtml}</div>${fileHtml}`;
+            `<div class="msg-bot-text msg-text">${bodyHtml}</div>${fileHtml}`;
 
         const speakBtn = div.querySelector(".msg-speak-btn");
         if (speakBtn) {
@@ -130,49 +134,81 @@ function appendMessage(role, text, fileMeta) {
     return div;
 }
 
+function createThinkingBubble() {
+    const loading = document.createElement("div");
+    loading.className = "msg msg-bot msg-thinking";
+    loading.innerHTML =
+        '<span class="msg-thinking-text">Düşünüyor</span>' +
+        '<span class="msg-thinking-dots" aria-hidden="true">' +
+        "<span>.</span><span>.</span><span>.</span>" +
+        "</span>";
+
+    let tick = 0;
+    const labels = ["Düşünüyor", "Hazırlıyor"];
+    const textEl = loading.querySelector(".msg-thinking-text");
+    loading._thinkingTimer = setInterval(function () {
+        tick += 1;
+        if (textEl) {
+            textEl.textContent = labels[tick % labels.length];
+        }
+    }, 1600);
+    return loading;
+}
+
+function removeThinkingBubble(loading) {
+    if (!loading) return;
+    if (loading._thinkingTimer) {
+        clearInterval(loading._thinkingTimer);
+    }
+    loading.remove();
+}
+
 function enhanceExistingBotMessages() {
     if (!window.KipSpeech || !KipSpeech.isSpeakSupported()) return;
 
-    document.querySelectorAll(".msg-bot").forEach(function (msg) {
+    document.querySelectorAll(".msg-bot:not(.msg-thinking)").forEach(function (msg) {
         if (msg.querySelector(".msg-speak-btn")) return;
 
-        const textEl = msg.querySelector(".bot-text:last-of-type") || msg.querySelector(".bot-text");
+        const textEl =
+            msg.querySelector(".msg-bot-text") ||
+            msg.querySelector(".msg-text") ||
+            msg.querySelector(".bot-text:last-of-type");
         let text = textEl ? textEl.textContent : msg.textContent;
         text = (text || "").replace(/^Kip(?:GPT| Asistan):\s*/i, "").trim();
         if (!text) return;
 
-        const head = document.createElement("div");
-        head.className = "msg-bot-head";
-        head.innerHTML = "<b>KipGPT:</b>";
+        let head = msg.querySelector(".msg-bot-head");
+        if (!head) {
+            head = document.createElement("div");
+            head.className = "msg-bot-head";
+            const label = document.createElement("b");
+            label.className = "msg-label bot-text";
+            label.textContent = "KipGPT";
+            head.appendChild(label);
+            msg.insertBefore(head, msg.firstChild);
+        }
 
-        const speakBtn = document.createElement("button");
-        speakBtn.type = "button";
-        speakBtn.className = "speech-speak-btn msg-speak-btn";
-        speakBtn.title = "Dinle";
-        speakBtn.innerHTML = '<span class="speech-speak-icon">🔊</span>';
-        speakBtn.addEventListener("click", function () {
-            if (KipSpeech.isSpeaking()) {
-                KipSpeech.stopSpeaking();
+        if (!head.querySelector(".msg-speak-btn")) {
+            const speakBtn = document.createElement("button");
+            speakBtn.type = "button";
+            speakBtn.className = "speech-speak-btn msg-speak-btn";
+            speakBtn.title = "Dinle";
+            speakBtn.innerHTML = '<span class="speech-speak-icon">🔊</span>';
+            speakBtn.addEventListener("click", function () {
+                if (KipSpeech.isSpeaking()) {
+                    KipSpeech.stopSpeaking();
+                    updateChatStopButton();
+                    return;
+                }
+                KipSpeech.speak(text);
                 updateChatStopButton();
-                return;
-            }
-            KipSpeech.speak(text);
-            updateChatStopButton();
-        });
-        head.appendChild(speakBtn);
+            });
+            head.appendChild(speakBtn);
+        }
 
-        const body = document.createElement("div");
-        body.className = "msg-bot-text";
-        Array.from(msg.childNodes).forEach(function (child) {
-            if (child.nodeType === Node.ELEMENT_NODE && child.tagName === "B") {
-                return;
-            }
-            body.appendChild(child);
-        });
-
-        msg.innerHTML = "";
-        msg.appendChild(head);
-        msg.appendChild(body);
+        if (textEl && !textEl.classList.contains("msg-bot-text")) {
+            textEl.classList.add("msg-bot-text", "msg-text");
+        }
     });
 }
 
@@ -325,10 +361,9 @@ async function sendTextMessage(event) {
 
     appendMessage("user", displayText, previewMeta);
 
-    const loading = document.createElement("div");
-    loading.className = "msg msg-bot";
-    loading.innerHTML = "<b>KipGPT:</b><br><i>KipGPT düşünüyor...</i>";
+    const loading = createThinkingBubble();
     messages.appendChild(loading);
+    messages.scrollTop = messages.scrollHeight;
 
     const formData = new FormData();
 
@@ -360,17 +395,19 @@ async function sendTextMessage(event) {
         }
 
         if (data.status === "success") {
-            loading.remove();
+            removeThinkingBubble(loading);
             appendMessage("bot", data.answer, data.file || null);
             if (data.chat_title) {
                 updateActiveChatTitle(data.chat_title);
             }
             clearSelectedFilePreview();
         } else {
-            loading.innerHTML = "<b>Hata:</b><br>" + escapeHtml(data.error || "Bilinmeyen hata");
+            removeThinkingBubble(loading);
+            showChatError(data.error || "Bilinmeyen hata");
         }
     } catch (e) {
-        loading.innerHTML = "<b>Hata:</b><br>" + escapeHtml(e.message || "Bağlantı hatası");
+        removeThinkingBubble(loading);
+        showChatError(e.message || "Bağlantı hatası");
         console.error(e);
     }
 
