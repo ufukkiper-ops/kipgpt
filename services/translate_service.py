@@ -1,4 +1,4 @@
-from services.chat_service import DEFAULT_GPT_MODEL, get_client, plain_text_response
+from services.chat_service import get_client, get_gpt_model, plain_text_response
 
 LANG_LABELS = {
     "tr": "Türkçe",
@@ -34,7 +34,7 @@ E-posta içeriği:
 {content[:14000]}"""
 
     response = client.chat.completions.create(
-        model=DEFAULT_GPT_MODEL,
+        model=get_gpt_model(),
         messages=[{"role": "user", "content": prompt}],
     )
     translated = response.choices[0].message.content or ""

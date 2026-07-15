@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,13 +21,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -49,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.kipgpt.app.data.ApiClient
 import com.kipgpt.app.data.ChatMessage
@@ -60,9 +60,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun ChatScreen(
     apiClient: ApiClient,
-    onOpenMail: () -> Unit,
-    onOpenSettings: () -> Unit,
-    onLogout: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val chats = remember { mutableStateListOf<ChatSummary>() }
     val messages = remember { mutableStateListOf<ChatMessage>() }
@@ -101,25 +99,38 @@ fun ChatScreen(
 
     LaunchedEffect(Unit) { loadChats() }
 
-    LaunchedEffect(messages.size) {
+    LaunchedEffect(messages.size, sending.value) {
         if (messages.isNotEmpty()) {
             listState.animateScrollToItem(messages.lastIndex)
         }
     }
 
     ModalNavigationDrawer(
+        modifier = modifier,
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet {
-                Text(
-                    "Sohbetler",
-                    modifier = Modifier.padding(16.dp),
-                    style = MaterialTheme.typography.titleLarge,
-                )
+                Column(Modifier.padding(16.dp)) {
+                    Text("Sohbetler", style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        "Geçmiş konuşmalarınız",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                HorizontalDivider()
                 chats.forEach { chat ->
+                    val isActive = chat.id == activeChatId.value
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .background(
+                                if (isActive) {
+                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+                                } else {
+                                    Color.Transparent
+                                }
+                            )
                             .clickable {
                                 scope.launch {
                                     drawerState.close()
@@ -135,14 +146,30 @@ fun ChatScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(Modifier.weight(1f)) {
-                            Text(chat.title, style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                chat.title,
+                                style = MaterialTheme.typography.titleSmall,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
                             Text(
                                 chat.preview.ifBlank { "Boş sohbet" },
                                 style = MaterialTheme.typography.bodySmall,
                                 maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        if (chat.message_count > 0) {
+                            Text(
+                                "${chat.message_count}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(start = 8.dp),
                             )
                         }
                     }
+                    HorizontalDivider()
                 }
             }
         },
@@ -150,7 +177,16 @@ fun ChatScreen(
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text(chatTitle.value) },
+                    title = {
+                        Column {
+                            Text(chatTitle.value, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(
+                                "AI Asistan",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    },
                     navigationIcon = {
                         IconButton(onClick = { scope.launch { drawerState.open() } }) {
                             Icon(Icons.Default.Menu, contentDescription = "Menü")
@@ -169,43 +205,54 @@ fun ChatScreen(
                         }) {
                             Icon(Icons.Default.Add, contentDescription = "Yeni sohbet")
                         }
-                        IconButton(onClick = onOpenMail) {
-                            Icon(Icons.Default.Email, contentDescription = "Mail")
-                        }
-                        IconButton(onClick = onOpenSettings) {
-                            Icon(Icons.Default.Settings, contentDescription = "Ayarlar")
+                        if (activeChatId.value.isNotBlank()) {
+                            IconButton(onClick = {
+                                scope.launch {
+                                    try {
+                                        apiClient.api.clearChat(activeChatId.value)
+                                        messages.clear()
+                                        loadChats(activeChatId.value)
+                                    } catch (e: Exception) {
+                                        snackbar.showSnackbar(e.message ?: "Temizlenemedi")
+                                    }
+                                }
+                            }) {
+                                Icon(Icons.Default.Delete, contentDescription = "Temizle")
+                            }
                         }
                     },
                 )
             },
             snackbarHost = { SnackbarHost(snackbar) },
-            floatingActionButton = {
-                if (activeChatId.value.isNotBlank()) {
-                    FloatingActionButton(
-                        onClick = {
-                            scope.launch {
-                                try {
-                                    apiClient.api.clearChat(activeChatId.value)
-                                    messages.clear()
-                                } catch (e: Exception) {
-                                    snackbar.showSnackbar(e.message ?: "Temizlenemedi")
-                                }
-                            }
-                        },
-                    ) {
-                        Icon(Icons.Default.Delete, contentDescription = "Temizle")
-                    }
-                }
-            },
         ) { padding ->
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding),
+                    .padding(padding)
+                    .imePadding(),
             ) {
                 if (loading.value) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
+                    }
+                } else if (messages.isEmpty() && !sending.value) {
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                "Merhaba!",
+                                style = MaterialTheme.typography.headlineSmall,
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                "Size nasıl yardımcı olabilirim?",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
                 } else {
                     LazyColumn(
@@ -219,6 +266,27 @@ fun ChatScreen(
                         item { Spacer(Modifier.height(4.dp)) }
                         items(messages) { message ->
                             MessageBubble(message)
+                        }
+                        if (sending.value) {
+                            item {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
+                                    horizontalArrangement = Arrangement.Start,
+                                ) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.padding(8.dp),
+                                        strokeWidth = 2.dp,
+                                    )
+                                    Text(
+                                        "Yanıt yazılıyor...",
+                                        modifier = Modifier.padding(top = 12.dp),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
                         }
                         item { Spacer(Modifier.height(4.dp)) }
                     }
@@ -236,6 +304,7 @@ fun ChatScreen(
                         modifier = Modifier.weight(1f),
                         placeholder = { Text("Mesaj yazın...") },
                         enabled = !sending.value,
+                        maxLines = 4,
                     )
                     Spacer(Modifier.padding(4.dp))
                     IconButton(
@@ -255,6 +324,7 @@ fun ChatScreen(
                                     chatTitle.value = response.chat_title
                                     loadChats(activeChatId.value)
                                 } catch (e: Exception) {
+                                    messages.removeLastOrNull()
                                     snackbar.showSnackbar("Gönderilemedi: ${e.message}")
                                 } finally {
                                     sending.value = false
@@ -286,7 +356,7 @@ private fun MessageBubble(message: ChatMessage) {
             text = message.content,
             color = fg,
             modifier = Modifier
-                .widthIn(max = 320.dp)
+                .widthIn(max = 300.dp)
                 .clip(RoundedCornerShape(16.dp))
                 .background(bg)
                 .padding(horizontal = 14.dp, vertical = 10.dp),

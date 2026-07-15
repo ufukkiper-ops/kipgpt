@@ -17,7 +17,7 @@ from mail import (
     send_new_mail,
     send_reply_mail,
 )
-from services.chat_service import ask_gpt, get_client
+from services.chat_service import ask_gpt_mail_reply, get_client
 from services.mail_threads import expand_selected_mail_ids, group_mails_by_thread
 from services.mail_contacts import remember_contacts_from_fields
 from services.file_service import parse_uploaded_attachment
@@ -166,17 +166,28 @@ def handle_mail_action(form, mail_config, files=None, user=None):
             error = "Sunucuda OPENAI_API_KEY ayarlı değil."
         else:
             try:
-                talimat = (
-                    f"\nKullanıcının Özel İsteği/Notu: {user_instruction}"
-                    if user_instruction else ""
-                )
-                prompt = f"""Gelen Mail Kimden: {sender}
-Konu: {subject}
-İçerik: {content}
-{talimat}
+                if user_instruction:
+                    prompt = f"""KULLANICI İPUCU / TALİMAT (ÖNCELİKLİ):
+{user_instruction}
 
-Yukarıdaki maili, varsa kullanıcının özel isteğini/notunu dikkate alarak profesyonel, kibar ve çözüm odaklı şekilde Türkçe olarak yanıtla. Türkçe imla ve noktalama kurallarına dikkat et."""
-                ai_yaniti = ask_gpt(prompt)
+Bu ipucu doğrultusunda aşağıdaki maile yanıt yaz. İpucundaki ton, uzunluk, içerik ve istekler mutlaka yansısın.
+
+Gelen Mail:
+Kimden: {sender}
+Konu: {subject}
+İçerik:
+{content}
+
+Sadece gönderilecek yanıt metnini yaz."""
+                else:
+                    prompt = f"""Gelen Mail:
+Kimden: {sender}
+Konu: {subject}
+İçerik:
+{content}
+
+Bu maile profesyonel, kibar ve çözüm odaklı bir Türkçe yanıt yaz. Sadece gönderilecek yanıt metnini yaz."""
+                ai_yaniti = ask_gpt_mail_reply(prompt)
                 secilen_mail = {
                     "id": mail_id,
                     "sender": sender,
@@ -192,18 +203,22 @@ Yukarıdaki maili, varsa kullanıcının özel isteğini/notunu dikkate alarak p
             error = "Sunucuda OPENAI_API_KEY ayarlı değil."
         else:
             try:
-                prompt = f"""Gelen Mail Kimden: {sender}
-Konu: {subject}
-İçerik: {content}
-
-Daha Önce Hazırlanan Taslak:
-{current_draft}
-
-Kullanıcının Taslağı Yeniden Düzenleme İsteği:
+                prompt = f"""KULLANICI İPUCU / TALİMAT (ÖNCELİKLİ):
 {revize_notu}
 
-Lütfen daha önce hazırlanan taslağı, kullanıcının yeni düzenleme isteği doğrultusunda güncelleyerek yeniden Türkçe olarak yaz. İmla ve noktalama kurallarına dikkat et."""
-                ai_yaniti = ask_gpt(prompt)
+Bu ipucu doğrultusunda aşağıdaki taslağı güncelle. İpucundaki istekler mutlaka uygulansın.
+
+Gelen Mail:
+Kimden: {sender}
+Konu: {subject}
+İçerik:
+{content}
+
+Mevcut Taslak (kullanıcı elle düzenlemiş olabilir):
+{current_draft}
+
+Güncellenmiş taslağı yaz. Sadece gönderilecek yanıt metnini döndür."""
+                ai_yaniti = ask_gpt_mail_reply(prompt)
                 secilen_mail = {
                     "id": mail_id,
                     "sender": sender,

@@ -11,7 +11,7 @@ from services.google_auth import (
 )
 from storage import load_data, save_data
 from users import (
-    check_password,
+    authenticate_local_user,
     create_google_user,
     email_exists,
     find_user,
@@ -21,6 +21,7 @@ from users import (
     link_google_mail_to_user,
     load_users,
     save_users,
+    ensure_dev_quick_user,
 )
 
 auth_bp = Blueprint("auth", __name__)
@@ -180,11 +181,10 @@ def login():
     if request.method == "POST":
         identifier = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "").strip()
-        user = find_user(identifier)
+        user = authenticate_local_user(identifier, password)
 
-        if user and user.get("auth_provider") == "google" and not user.get("password"):
-            error = "Bu hesap Google ile kayıtlı. Lütfen Google ile giriş yapın."
-        elif user and check_password(password, user.get("password")):
+        if user:
+            _init_user_data(get_user_id(user))
             session["user"] = get_user_id(user)
             return redirect(url_for("chat.index"))
         else:

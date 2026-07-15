@@ -24,12 +24,37 @@
     const readerAttachments = document.getElementById("reader-attachments");
     const translateButtons = document.querySelectorAll(".translate-btn");
     const currentFolder = document.body.dataset.mailFolder || "inbox";
+    const currentAccount = document.body.dataset.mailAccount || "";
+
+    function buildAttachmentUrl(mail, att) {
+        let url = "/mail/attachment?mail_id=" + encodeURIComponent(mail.id) +
+            "&index=" + encodeURIComponent(att.index) +
+            "&folder=" + encodeURIComponent(currentFolder);
+        if (currentAccount) {
+            url += "&account=" + encodeURIComponent(currentAccount);
+        }
+        return url;
+    }
+
+    function formatAttachmentSize(bytes) {
+        const size = Number(bytes) || 0;
+        if (size < 1024) return size + " B";
+        if (size < 1024 * 1024) return Math.round(size / 1024) + " KB";
+        return (size / (1024 * 1024)).toFixed(1) + " MB";
+    }
     const aiPanel = document.getElementById("ai-panel");
     const aiMailId = document.getElementById("ai-mail-id");
     const aiSender = document.getElementById("ai-sender");
     const aiSubject = document.getElementById("ai-subject");
     const aiContent = document.getElementById("ai-content");
     const replyBtn = document.getElementById("reply-btn");
+    const aiReplyBtn = document.getElementById("ai-reply-btn");
+    const manualReplyPanel = document.getElementById("manual-reply-panel");
+    const manualReplySender = document.getElementById("manual-reply-sender");
+    const manualReplySubject = document.getElementById("manual-reply-subject");
+    const manualReplyTo = document.getElementById("manual-reply-to");
+    const manualReplyBody = document.getElementById("manual-reply-body");
+    const manualReplyCancel = document.getElementById("manual-reply-cancel");
     const selectAll = document.getElementById("select-all");
     const sidebar = document.getElementById("gmail-sidebar");
     const menuBtn = document.querySelector(".menu-btn");
@@ -93,6 +118,12 @@
         const div = document.createElement("div");
         div.textContent = text || "";
         return div.innerHTML;
+    }
+
+    function escapeAttr(text) {
+        return String(text || "")
+            .replace(/&/g, "&amp;")
+            .replace(/"/g, "&quot;");
     }
 
     function getActiveBodyElement() {
@@ -209,17 +240,24 @@
             return;
         }
 
-        let html = '<div class="mail-attachments-title">Ekler</div><div class="mail-attachments-list">';
+        let html = '<div class="mail-attachments-title">Ekler (' + attachments.length + ')</div><div class="mail-attachments-list">';
         attachments.forEach(function (att) {
-            const url = `/mail/attachment?mail_id=${encodeURIComponent(mail.id)}&index=${att.index}&folder=${encodeURIComponent(currentFolder)}`;
+            const url = buildAttachmentUrl(mail, att);
+            const safeName = escapeHtml(att.filename || "ek");
+            const downloadName = escapeAttr(att.filename || "ek");
+            const sizeLabel = att.size ? formatAttachmentSize(att.size) : "";
             if (att.is_image && att.preview) {
-                html += `<a class="mail-attach-item" href="${url}" download title="İndir: ${att.filename}">` +
-                    `<img src="${att.preview}" class="mail-attach-thumb" alt="${att.filename}">` +
-                    `<span class="mail-attach-name">${att.filename}</span></a>`;
+                html += '<a class="mail-attach-item" href="' + url + '" download="' + downloadName + '" title="İndir: ' + safeName + '">' +
+                    '<img src="' + att.preview + '" class="mail-attach-thumb" alt="' + safeName + '">' +
+                    '<span class="mail-attach-meta"><span class="mail-attach-name">' + safeName + '</span>' +
+                    (sizeLabel ? '<span class="mail-attach-size">' + sizeLabel + '</span>' : '') + '</span>' +
+                    '<span class="material-icons-outlined mail-attach-download">download</span></a>';
             } else {
-                html += `<a class="mail-attach-item" href="${url}" download title="İndir: ${att.filename}">` +
-                    `<span class="mail-attach-icon">📎</span>` +
-                    `<span class="mail-attach-name">${att.filename}</span></a>`;
+                html += '<a class="mail-attach-item" href="' + url + '" download="' + downloadName + '" title="İndir: ' + safeName + '">' +
+                    '<span class="mail-attach-icon material-icons-outlined">attach_file</span>' +
+                    '<span class="mail-attach-meta"><span class="mail-attach-name">' + safeName + '</span>' +
+                    (sizeLabel ? '<span class="mail-attach-size">' + sizeLabel + '</span>' : '') + '</span>' +
+                    '<span class="material-icons-outlined mail-attach-download">download</span></a>';
             }
         });
         html += "</div>";
@@ -236,19 +274,27 @@
         const attachments = mail.attachments || [];
         if (!attachments.length) return "";
 
-        let html = '<div class="thread-msg-attachments">';
+        let html = '<div class="thread-msg-attachments"><div class="mail-attachments-list">';
         attachments.forEach(function (att) {
-            const url = `/mail/attachment?mail_id=${encodeURIComponent(mail.id)}&index=${att.index}&folder=${encodeURIComponent(currentFolder)}`;
+            const url = buildAttachmentUrl(mail, att);
+            const safeName = escapeHtml(att.filename || "ek");
+            const downloadName = escapeAttr(att.filename || "ek");
+            const sizeLabel = att.size ? formatAttachmentSize(att.size) : "";
             if (att.is_image && att.preview) {
-                html += `<a class="mail-attach-item" href="${url}" download title="İndir: ${att.filename}">` +
-                    `<img src="${att.preview}" class="mail-attach-thumb" alt="${att.filename}">` +
-                    `<span class="mail-attach-name">${att.filename}</span></a>`;
+                html += '<a class="mail-attach-item mail-attach-item-compact" href="' + url + '" download="' + downloadName + '" title="İndir: ' + safeName + '">' +
+                    '<img src="' + att.preview + '" class="mail-attach-thumb" alt="' + safeName + '">' +
+                    '<span class="mail-attach-name">' + safeName + '</span>' +
+                    (sizeLabel ? '<span class="mail-attach-size">' + sizeLabel + '</span>' : '') +
+                    '<span class="material-icons-outlined mail-attach-download">download</span></a>';
             } else {
-                html += `<a class="mail-attach-item" href="${url}" download title="İndir: ${att.filename}">` +
-                    `<span class="mail-attach-icon">📎</span>` +
-                    `<span class="mail-attach-name">${att.filename}</span></a>`;
+                html += '<a class="mail-attach-item mail-attach-item-compact" href="' + url + '" download="' + downloadName + '" title="İndir: ' + safeName + '">' +
+                    '<span class="mail-attach-icon material-icons-outlined">attach_file</span>' +
+                    '<span class="mail-attach-name">' + safeName + '</span>' +
+                    (sizeLabel ? '<span class="mail-attach-size">' + sizeLabel + '</span>' : '') +
+                    '<span class="material-icons-outlined mail-attach-download">download</span></a>';
             }
         });
+        html += "</div>";
         html += "</div>";
         return html;
     }
@@ -375,6 +421,7 @@
         if (readerContent) readerContent.hidden = true;
         if (readerEmpty) readerEmpty.hidden = false;
         if (aiPanel) aiPanel.hidden = true;
+        if (manualReplyPanel) manualReplyPanel.hidden = true;
         if (readerThread) {
             readerThread.hidden = true;
             readerThread.innerHTML = "";
@@ -433,7 +480,13 @@
             if (aiSender) aiSender.value = mail.sender || "";
             if (aiSubject) aiSubject.value = mail.subject || "";
             if (aiContent) aiContent.value = currentOriginalContent;
-            if (aiPanel) aiPanel.hidden = false;
+            if (aiPanel) aiPanel.hidden = true;
+            if (manualReplyPanel) manualReplyPanel.hidden = true;
+            if (manualReplySender) manualReplySender.value = mail.sender || "";
+            if (manualReplySubject) manualReplySubject.value = mail.subject || "";
+            currentSenderDisplay = mail.sender_display || mail.sender || "";
+            if (manualReplyTo) manualReplyTo.value = currentSenderDisplay;
+            if (manualReplyBody) manualReplyBody.value = "";
 
             if (readerFrom && mail.thread_count > 1) {
                 readerFrom.textContent = (mail.sender_display || mail.sender || "") +
@@ -481,12 +534,65 @@
         });
     }
 
-    if (replyBtn && aiPanel) {
-        replyBtn.addEventListener("click", function () {
-            aiPanel.hidden = false;
-            aiPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
-            const textarea = aiPanel.querySelector("textarea");
-            if (textarea) textarea.focus();
+    function hideReplyPanels() {
+        if (aiPanel) aiPanel.hidden = true;
+        if (manualReplyPanel) manualReplyPanel.hidden = true;
+    }
+
+    let currentSenderDisplay = "";
+
+    function showManualReplyPanel() {
+        hideReplyPanels();
+        if (!manualReplyPanel) return;
+        manualReplyPanel.hidden = false;
+        if (manualReplySender && aiSender) {
+            manualReplySender.value = aiSender.value || "";
+        }
+        if (manualReplySubject && aiSubject) {
+            manualReplySubject.value = aiSubject.value || "";
+        }
+        if (manualReplyTo) {
+            manualReplyTo.value = currentSenderDisplay || aiSender?.value || "";
+        }
+        manualReplyPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        if (manualReplyBody) manualReplyBody.focus();
+    }
+
+    function showAiReplyPanel() {
+        hideReplyPanels();
+        if (!aiPanel) return;
+        aiPanel.hidden = false;
+        aiPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        const textarea = document.getElementById("ai-user-instruction") ||
+            aiPanel.querySelector('textarea[name="user_instruction"]');
+        if (textarea) textarea.focus();
+    }
+
+    if (replyBtn) {
+        replyBtn.addEventListener("click", showManualReplyPanel);
+    }
+
+    if (aiReplyBtn) {
+        aiReplyBtn.addEventListener("click", showAiReplyPanel);
+    }
+
+    if (manualReplyCancel) {
+        manualReplyCancel.addEventListener("click", function () {
+            if (manualReplyPanel) manualReplyPanel.hidden = true;
+            if (manualReplyBody) manualReplyBody.value = "";
+        });
+    }
+
+    const manualReplyCcToggle = document.getElementById("manual-reply-cc-toggle");
+    const manualReplyExtraFields = document.getElementById("manual-reply-extra-fields");
+    bindCcToggle(manualReplyCcToggle, manualReplyExtraFields);
+
+    const aiReviseForm = document.getElementById("ai-revise-form");
+    const aiDraftEditor = document.getElementById("ai-draft-editor");
+    const aiCurrentDraft = document.getElementById("ai-current-draft");
+    if (aiReviseForm && aiDraftEditor && aiCurrentDraft) {
+        aiReviseForm.addEventListener("submit", function () {
+            aiCurrentDraft.value = aiDraftEditor.value;
         });
     }
 
@@ -696,7 +802,9 @@
         input.addEventListener("change", function () {
             const previewId = input.id === "compose-file"
                 ? "compose-file-preview"
-                : "reply-attach-preview";
+                : input.id === "manual-reply-file"
+                    ? "manual-reply-attach-preview"
+                    : "reply-attach-preview";
             const previewEl = document.getElementById(previewId);
 
             if (!input.files.length) {

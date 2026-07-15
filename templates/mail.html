@@ -290,10 +290,48 @@
                                 <span class="material-icons-outlined">reply</span>
                                 Yanıtla
                             </button>
+                            <button class="action-btn action-btn-ai" type="button" id="ai-reply-btn">
+                                <span class="material-icons-outlined">auto_awesome</span>
+                                AI ile Yanıtla
+                            </button>
                             <button class="action-btn" type="button">
                                 <span class="material-icons-outlined">forward</span>
                                 İlet
                             </button>
+                        </div>
+
+                        <div class="manual-reply-panel" id="manual-reply-panel" hidden>
+                            <div class="reply-panel-header">
+                                <span class="material-icons-outlined">edit</span>
+                                <h3>Manuel Yanıt</h3>
+                            </div>
+                            <form method="post" class="manual-reply-form" enctype="multipart/form-data">
+                                <input type="hidden" name="islem" value="gonder">
+                                <input type="hidden" name="sender" id="manual-reply-sender">
+                                <input type="hidden" name="subject" id="manual-reply-subject">
+                                <div class="compose-field-row reply-field-row">
+                                    <input type="text" id="manual-reply-to" class="compose-readonly" readonly>
+                                    <button type="button" class="compose-cc-toggle" id="manual-reply-cc-toggle">Cc / Bcc</button>
+                                </div>
+                                <div class="compose-extra-fields" id="manual-reply-extra-fields" hidden>
+                                    <input type="text" name="cc_email" id="manual-reply-cc" placeholder="Cc">
+                                    <input type="text" name="bcc_email" id="manual-reply-bcc" placeholder="Bcc">
+                                </div>
+                                <textarea name="final_reply" id="manual-reply-body" class="manual-reply-editor" rows="8" placeholder="Yanıtınızı buraya yazın..."></textarea>
+                                <div id="manual-reply-attach-preview" class="compose-file-preview" hidden></div>
+                                <div class="manual-reply-actions">
+                                    <label class="attach-btn" title="Dosya ekle">
+                                        <span class="material-icons-outlined">attach_file</span>
+                                        Ekle
+                                        <input type="file" name="attachment" class="mail-attach-input" id="manual-reply-file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" hidden>
+                                    </label>
+                                    <button type="button" class="action-btn" id="manual-reply-cancel">Vazgeç</button>
+                                    <button type="submit" class="action-btn send-reply-btn">
+                                        <span class="material-icons-outlined">send</span>
+                                        Gönder
+                                    </button>
+                                </div>
+                            </form>
                         </div>
 
                         <div class="ai-panel" id="ai-panel" hidden>
@@ -301,16 +339,20 @@
                                 <span class="material-icons-outlined">auto_awesome</span>
                                 <h3>Kip Asistan ile Yanıt Oluştur</h3>
                             </div>
+                            <p class="draft-edit-hint">AI, yazdığınız ipucu doğrultusunda yanıt üretir. Örn: "Kısa ve net yaz", "Toplantıyı Perşembe 14:00 öner".</p>
                             <form method="post" class="ai-form">
                                 <input type="hidden" name="islem" value="olustur">
                                 <input type="hidden" name="mail_id" id="ai-mail-id">
                             <input type="hidden" name="sender" id="ai-sender">
                                 <input type="hidden" name="subject" id="ai-subject">
                                 <input type="hidden" name="content" id="ai-content">
+                                <label class="ai-instruction-label" for="ai-user-instruction">İpucu / Talimat</label>
                                 <textarea
+                                    id="ai-user-instruction"
                                     name="user_instruction"
-                                    placeholder="Özel talimat (isteğe bağlı): Daha kısa yaz, resmi dil kullan..."
-                                    rows="2"></textarea>
+                                    placeholder="Yanıtın nasıl olmasını istiyorsunuz? Örn: Daha kısa yaz, resmi dil kullan, fiyat teklifini ekle..."
+                                    rows="3"
+                                    required></textarea>
                                 <button type="submit" class="ai-generate-btn">
                                     <span class="material-icons-outlined">auto_awesome</span>
                                     Yanıt Oluştur
@@ -582,7 +624,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/mail.js') }}?v=35"></script>
+<script src="{{ url_for('static', filename='js/mail.js') }}?v=38"></script>
 <script id="provider-data" type="application/json">{{ providers|tojson }}</script>
 <script id="sensitivity-data" type="application/json">{{ sensitivity_presets|tojson }}</script>
 {% endblock %}

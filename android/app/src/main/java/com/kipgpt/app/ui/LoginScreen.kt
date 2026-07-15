@@ -8,8 +8,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -26,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.kipgpt.app.data.ApiClient
 import com.kipgpt.app.data.LoginRequest
@@ -43,6 +49,7 @@ fun LoginScreen(
 ) {
     val email = remember { mutableStateOf("") }
     val password = remember { mutableStateOf("") }
+    val showPassword = remember { mutableStateOf(false) }
     val loading = remember { mutableStateOf(false) }
     val isRegister = remember { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
@@ -66,8 +73,9 @@ fun LoginScreen(
             Text("Kip Asistan", style = MaterialTheme.typography.headlineLarge)
             Spacer(Modifier.height(8.dp))
             Text(
-                if (isRegister.value) "Hesap oluştur" else "Giriş yap",
+                if (isRegister.value) "Yeni hesap oluşturun" else "Hesabınıza giriş yapın",
                 style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(24.dp))
 
@@ -86,7 +94,19 @@ fun LoginScreen(
                 label = { Text("Şifre") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                visualTransformation = PasswordVisualTransformation(),
+                visualTransformation = if (showPassword.value) {
+                    VisualTransformation.None
+                } else {
+                    PasswordVisualTransformation()
+                },
+                trailingIcon = {
+                    IconButton(onClick = { showPassword.value = !showPassword.value }) {
+                        Icon(
+                            if (showPassword.value) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                            contentDescription = "Şifreyi göster",
+                        )
+                    }
+                },
             )
             Spacer(Modifier.height(20.dp))
 
@@ -97,14 +117,14 @@ fun LoginScreen(
                         try {
                             val response = if (isRegister.value) {
                                 apiClient.api.register(
-                                    RegisterRequest(email.value.trim(), password.value)
+                                    RegisterRequest(email.value.trim(), password.value),
                                 )
                             } else {
                                 apiClient.api.login(
-                                    LoginRequest(email.value.trim(), password.value)
+                                    LoginRequest(email.value.trim(), password.value),
                                 )
                             }
-                            sessionManager.saveToken(response.token)
+                            sessionManager.saveToken(response.token, response.user.email)
                             apiClient.updateToken(response.token)
                             onLoggedIn()
                         } catch (e: HttpException) {
@@ -122,7 +142,11 @@ fun LoginScreen(
                 enabled = !loading.value && email.value.isNotBlank() && password.value.isNotBlank(),
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text(if (isRegister.value) "Kayıt Ol" else "Giriş Yap")
+                if (loading.value) {
+                    CircularProgressIndicator(modifier = Modifier.height(20.dp))
+                } else {
+                    Text(if (isRegister.value) "Kayıt Ol" else "Giriş Yap")
+                }
             }
 
             TextButton(onClick = { isRegister.value = !isRegister.value }) {
@@ -131,11 +155,6 @@ fun LoginScreen(
 
             TextButton(onClick = onOpenSettings) {
                 Text("Sunucu ayarları")
-            }
-
-            if (loading.value) {
-                Spacer(Modifier.height(16.dp))
-                CircularProgressIndicator()
             }
         }
     }

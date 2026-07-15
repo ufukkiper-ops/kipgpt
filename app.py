@@ -21,11 +21,13 @@ from routes.auth_routes import auth_bp
 from routes.chat_routes import chat_bp
 from routes.mail_page import mail_bp
 from routes.mobile_api import mobile_api_bp
-from users import ensure_users_file
+from users import ensure_dev_quick_user, ensure_dev_quick_mail_accounts, ensure_users_file
 
 
 def create_app():
     ensure_users_file()
+    ensure_dev_quick_user()
+    ensure_dev_quick_mail_accounts()
 
     application = Flask(__name__)
     application.secret_key = os.getenv("FLASK_SECRET_KEY", "gizli123")

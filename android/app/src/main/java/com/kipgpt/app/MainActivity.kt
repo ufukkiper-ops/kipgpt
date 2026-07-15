@@ -4,18 +4,22 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.kipgpt.app.data.ApiClient
 import com.kipgpt.app.data.SessionManager
-import com.kipgpt.app.ui.ChatScreen
 import com.kipgpt.app.ui.LoginScreen
-import com.kipgpt.app.ui.MailScreen
+import com.kipgpt.app.ui.MainScreen
 import com.kipgpt.app.ui.SettingsScreen
 import com.kipgpt.app.ui.theme.KipGptTheme
 import kotlinx.coroutines.flow.first
@@ -45,7 +49,7 @@ private fun KipGptApp(sessionManager: SessionManager) {
     LaunchedEffect(Unit) {
         tokenState.value = sessionManager.tokenFlow.first()
         baseUrlState.value = sessionManager.baseUrlFlow.first()
-        startRoute.value = if (tokenState.value.isNullOrBlank()) "login" else "chat"
+        startRoute.value = if (tokenState.value.isNullOrBlank()) "login" else "main"
     }
 
     val apiClient = remember(tokenState.value, baseUrlState.value) {
@@ -53,7 +57,12 @@ private fun KipGptApp(sessionManager: SessionManager) {
     }
 
     val route = startRoute.value
-    if (route == null) return
+    if (route == null) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
 
     NavHost(navController = navController, startDestination = route) {
         composable("login") {
@@ -62,43 +71,31 @@ private fun KipGptApp(sessionManager: SessionManager) {
                 sessionManager = sessionManager,
                 onLoggedIn = {
                     tokenState.value = sessionManager.tokenFlow.first()
-                    navController.navigate("chat") {
+                    navController.navigate("main") {
                         popUpTo("login") { inclusive = true }
                     }
                 },
-                onOpenSettings = { navController.navigate("settings") },
+                onOpenSettings = { navController.navigate("settings_guest") },
             )
         }
-        composable("chat") {
-            ChatScreen(
+        composable("main") {
+            MainScreen(
                 apiClient = apiClient,
-                onOpenMail = { navController.navigate("mail") },
-                onOpenSettings = { navController.navigate("settings") },
+                sessionManager = sessionManager,
                 onLogout = {
                     tokenState.value = null
                     navController.navigate("login") {
-                        popUpTo("chat") { inclusive = true }
+                        popUpTo("main") { inclusive = true }
                     }
                 },
             )
         }
-        composable("mail") {
-            MailScreen(
-                apiClient = apiClient,
-                onBack = { navController.popBackStack() },
-            )
-        }
-        composable("settings") {
+        composable("settings_guest") {
             SettingsScreen(
                 apiClient = apiClient,
                 sessionManager = sessionManager,
                 onBack = { navController.popBackStack() },
-                onLogout = {
-                    tokenState.value = null
-                    navController.navigate("login") {
-                        popUpTo(0) { inclusive = true }
-                    }
-                },
+                onLogout = null,
             )
         }
     }

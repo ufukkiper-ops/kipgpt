@@ -1,6 +1,7 @@
 import base64
 import email
 import imaplib
+import mimetypes
 import os
 import re
 import smtplib
@@ -13,7 +14,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import parsedate_to_datetime
 
-from services.chat_service import DEFAULT_GPT_MODEL, get_client
+from services.chat_service import get_client, get_gpt_model
 from services.mail_content import clean_mail_body, decode_payload, html_to_text, normalize_mail_body
 
 
@@ -153,17 +154,29 @@ def extract_body(msg):
     return clean_mail_body(body)
 
 
-def extract_attachments(msg):
-    attachments = []
-    index = 0
-
+def _iter_attachment_parts(msg):
     for part in msg.walk():
-        filename = decode_mail_header(part.get_filename())
-        if not filename:
+        if part.get_content_maintype() == "multipart":
             continue
 
-        mime = part.get_content_type()
+        filename = decode_mail_header(part.get_filename())
+        disposition = (part.get("Content-Disposition") or "").lower()
+        if not filename:
+            if "attachment" not in disposition:
+                continue
+            mime = part.get_content_type() or "application/octet-stream"
+            ext = mimetypes.guess_extension(mime.split(";")[0].strip()) or ".bin"
+            filename = "ek" + ext
+
+        mime = part.get_content_type() or "application/octet-stream"
         payload = part.get_payload(decode=True) or b""
+        yield filename, mime, payload
+
+
+def extract_attachments(msg):
+    attachments = []
+
+    for index, (filename, mime, payload) in enumerate(_iter_attachment_parts(msg)):
         is_image = mime.startswith("image/")
         preview = None
         if is_image and len(payload) < 800000:
@@ -177,7 +190,6 @@ def extract_attachments(msg):
             "is_image": is_image,
             "preview": preview,
         })
-        index += 1
 
     return attachments
 
@@ -593,27 +605,19 @@ def get_archive(config, count=20):
 
 def fetch_attachment(config, folder, mail_id, index):
     mail = connect_mail(config, folder)
-    _, msg_data = mail.uid("fetch", mail_id.encode(), "(RFC822)")
-    raw = msg_data[0][1]
-    msg = email.message_from_bytes(raw)
-    attachments = []
+    try:
+        _, raw = _fetch_mail_by_uid(mail, mail_id, config)
+        if not raw:
+            raise FileNotFoundError("Mail bulunamadı.")
 
-    for part in msg.walk():
-        filename = decode_mail_header(part.get_filename())
-        if not filename:
-            continue
-        disposition = (part.get("Content-Disposition") or "").lower()
-        if "attachment" not in disposition and part.get_content_maintype() == "multipart":
-            continue
-        payload = part.get_payload(decode=True) or b""
-        attachments.append((filename, part.get_content_type(), payload))
+        msg = email.message_from_bytes(raw)
+        attachments = list(_iter_attachment_parts(msg))
+        if index < 0 or index >= len(attachments):
+            raise FileNotFoundError("Ek bulunamadı.")
 
-    mail.logout()
-
-    if index < 0 or index >= len(attachments):
-        raise FileNotFoundError("Ek bulunamadı.")
-
-    return attachments[index]
+        return attachments[index]
+    finally:
+        mail.logout()
 
 
 def send_reply_mail(config, to_email, subject, body, attachments=None, cc=None, bcc=None):
@@ -688,7 +692,7 @@ Mail:
 {text}
 """
     response = client.chat.completions.create(
-        model=DEFAULT_GPT_MODEL,
+        model=get_gpt_model(),
         messages=[{"role": "user", "content": prompt}],
     )
     return response.choices[0].message.content

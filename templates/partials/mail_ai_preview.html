@@ -1,6 +1,6 @@
 <div class="reader-header">
 
-    <h1 class="reader-subject">Kip Asistan Taslak Yanıtı</h1>
+    <h1 class="reader-subject">Yanıt Taslağı</h1>
 
     <div class="reader-meta">
 
@@ -26,7 +26,7 @@
 
 <div class="reader-scroll-body">
 
-    <form method="post" class="ai-reply-form" enctype="multipart/form-data">
+    <form method="post" class="ai-reply-form" enctype="multipart/form-data" id="ai-draft-form">
 
         <input type="hidden" name="islem" value="gonder">
 
@@ -43,7 +43,9 @@
             <input type="text" name="bcc_email" placeholder="Bcc">
         </div>
 
-        <textarea name="final_reply" class="ai-editor" rows="8">{{ ai_yaniti }}</textarea>
+        <p class="draft-edit-hint">AI taslağını istediğiniz gibi düzenleyebilirsiniz. Göndermeden önce metni kontrol edin.</p>
+
+        <textarea name="final_reply" class="ai-editor" id="ai-draft-editor" rows="10">{{ ai_yaniti }}</textarea>
 
         <div id="reply-attach-preview" class="compose-file-preview" hidden></div>
 
@@ -73,19 +75,23 @@
 
 
 
-    <div class="ai-panel">
+    <div class="ai-panel ai-revise-panel">
 
         <div class="ai-panel-header">
 
-            <span class="material-icons-outlined">edit</span>
+            <span class="material-icons-outlined">auto_awesome</span>
 
-            <h3>Taslağı Yeniden Düzenle</h3>
+            <h3>AI ile Taslağı Güncelle</h3>
 
         </div>
 
-        <form method="post" class="ai-form">
+        <p class="draft-edit-hint">Önce yukarıdaki metni elle düzenleyin; sonra AI'den istediğiniz değişikliği isteyin.</p>
+
+        <form method="post" class="ai-form" id="ai-revise-form">
 
             <input type="hidden" name="islem" value="revize_et">
+
+            <input type="hidden" name="mail_id" value="{{ secilen_mail.id }}">
 
             <input type="hidden" name="sender" value="{{ secilen_mail.sender }}">
 
@@ -93,13 +99,13 @@
 
             <input type="hidden" name="content" value="{{ secilen_mail.content }}">
 
-            <input type="hidden" name="current_draft" value="{{ ai_yaniti }}">
+            <input type="hidden" name="current_draft" id="ai-current-draft" value="{{ ai_yaniti }}">
 
             <textarea
 
                 name="revize_notu"
 
-                placeholder="Nasıl değiştirilsin? (Örn: Daha kısa yaz, toplantı saatini 14:00 yap...)"
+                placeholder="Taslağı nasıl değiştirsin? Örn: Daha kısa yaz, fiyatı 5000 TL yap, daha samimi ol..."
 
                 rows="2"
 
@@ -109,7 +115,7 @@
 
                 <span class="material-icons-outlined">refresh</span>
 
-                Taslağı Güncelle
+                AI ile Güncelle
 
             </button>
 
@@ -118,4 +124,3 @@
     </div>
 
 </div>
-

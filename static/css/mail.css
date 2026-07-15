@@ -1571,7 +1571,38 @@ body.dialog-open .account-remove-form {
     background: #f8f9fa;
     text-decoration: none;
     color: var(--gmail-text);
-    max-width: 220px;
+    max-width: 280px;
+}
+
+.mail-attach-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+}
+
+.mail-attach-size {
+    font-size: 11px;
+    color: var(--gmail-text-secondary);
+}
+
+.mail-attach-download {
+    font-size: 20px;
+    color: var(--gmail-blue);
+    flex-shrink: 0;
+}
+
+.mail-attach-item-compact {
+    max-width: 240px;
+}
+
+.thread-msg-attachments {
+    padding: 8px 0 4px;
+}
+
+.thread-msg-attachments .mail-attachments-list {
+    gap: 8px;
 }
 
 .mail-attach-item:hover {
@@ -1611,6 +1642,73 @@ body.dialog-open .account-remove-form {
     display: none !important;
 }
 
+.manual-reply-panel {
+    margin: 0;
+    padding: 20px 24px 28px;
+    background: #fff;
+    border-top: 1px solid var(--gmail-border);
+    flex-shrink: 0;
+}
+
+.manual-reply-panel[hidden] {
+    display: none !important;
+}
+
+.reply-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    color: var(--gmail-text);
+}
+
+.reply-panel-header h3 {
+    font-size: 15px;
+    font-weight: 500;
+}
+
+.manual-reply-editor,
+.ai-editor {
+    width: 100%;
+    border: 1px solid var(--gmail-border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 14px;
+    font-family: inherit;
+    line-height: 1.5;
+    resize: vertical;
+    min-height: 160px;
+    box-sizing: border-box;
+}
+
+.manual-reply-editor:focus,
+.ai-editor:focus {
+    outline: none;
+    border-color: var(--gmail-blue);
+    box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.15);
+}
+
+.draft-edit-hint {
+    margin: 0 0 10px;
+    font-size: 12px;
+    color: var(--gmail-text-secondary);
+    line-height: 1.45;
+}
+
+.manual-reply-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+}
+
+.ai-revise-panel {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px dashed #dadce0;
+}
+
 .action-btn {
     display: flex;
     align-items: center;
@@ -1647,6 +1745,17 @@ body.dialog-open .account-remove-form {
     background: #ceead6;
 }
 
+.action-btn-ai {
+    border-color: #aecbfa;
+    background: #e8f0fe;
+    color: #1a73e8;
+    font-weight: 500;
+}
+
+.action-btn-ai:hover {
+    background: #d2e3fc;
+}
+
 .restore-btn {
     color: #137333;
 }
@@ -1666,6 +1775,14 @@ body.dialog-open .account-remove-form {
 .ai-panel-header h3 {
     font-size: 15px;
     font-weight: 500;
+}
+
+.ai-instruction-label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gmail-blue);
 }
 
 .ai-form textarea {

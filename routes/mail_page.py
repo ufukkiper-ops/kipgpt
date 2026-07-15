@@ -54,7 +54,7 @@ def _mail_url(folder="inbox", account_id=None, search=""):
 @mail_bp.route("/mail-version")
 def mail_version():
     return {
-        "ui_version": "gmail-v35",
+        "ui_version": "gmail-v38",
         "layout": "gmail-sidebar",
         "message": "Çoklu mail hesabı desteği",
     }
@@ -65,7 +65,12 @@ def mail_attachment():
     if "user" not in session:
         return redirect(url_for("auth.login"))
 
-    user, mail_config, _, _, active_id = _get_user_and_mail()
+    user, _, _, _, _ = _get_user_and_mail()
+    if not user:
+        return redirect(url_for("auth.login"))
+
+    account_id = (request.args.get("account") or "").strip() or None
+    mail_config, _ = resolve_active_mail_config(user, session, account_id)
     if not mail_config:
         return "Mail ayarları bulunamadı.", 400
 
@@ -251,5 +256,5 @@ def mail_page():
         mail_settings=mail_settings,
         sensitivity_presets=SENSITIVITY_PRESETS,
         mail_contacts=mail_contacts,
-        ui_version="gmail-v35",
+        ui_version="gmail-v38",
     )

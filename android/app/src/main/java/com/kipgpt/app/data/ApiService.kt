@@ -12,6 +12,8 @@ import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
+import retrofit2.http.Streaming
+import okhttp3.ResponseBody
 import java.util.concurrent.TimeUnit
 
 interface KipGptApi {
@@ -50,6 +52,14 @@ interface KipGptApi {
         @Query("folder") folder: String,
         @Query("search") search: String? = null,
     ): MailListResponse
+
+    @GET("mail/attachment")
+    @Streaming
+    suspend fun downloadAttachment(
+        @Query("mail_id") mailId: String,
+        @Query("index") index: Int,
+        @Query("folder") folder: String,
+    ): ResponseBody
 
     @POST("mail/translate")
     suspend fun translate(@Body body: TranslateRequest): TranslateResponse

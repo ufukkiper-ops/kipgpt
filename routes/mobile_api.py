@@ -1,16 +1,16 @@
-from flask import Blueprint, current_app, jsonify, request
+from flask import Blueprint, current_app, jsonify, request, send_file
+from io import BytesIO
 
 from services.api_auth import create_api_token, require_api_user
 from services.mail_accounts import list_accounts_for_ui, resolve_active_mail_config
 from services.mail_settings import get_mail_settings
-from services.mail_ui import FOLDERS, filter_mails, load_folder_mails
+from services.mail_ui import FOLDERS, download_mail_attachment, filter_mails, load_folder_mails
 from services.translate_service import translate_mail_content
 from services.chat_service import generate_chat_response, generate_chat_title, get_client
 from storage import load_data, save_data
 from users import (
-    check_password,
+    authenticate_local_user,
     email_exists,
-    find_user,
     find_user_by_id,
     get_user_id,
     hash_password,
@@ -95,14 +95,8 @@ def api_login():
     email = (payload.get("email") or "").strip().lower()
     password = (payload.get("password") or "").strip()
 
-    user = find_user(email)
+    user = authenticate_local_user(email, password)
     if not user:
-        return jsonify({"error": "E-posta veya şifre hatalı."}), 401
-
-    if user.get("auth_provider") == "google" and not user.get("password"):
-        return jsonify({"error": "Bu hesap Google ile kayıtlı. Web üzerinden giriş yapın."}), 401
-
-    if not check_password(password, user.get("password")):
         return jsonify({"error": "E-posta veya şifre hatalı."}), 401
 
     user_id = get_user_id(user)
@@ -322,6 +316,39 @@ def api_mail_list(user_id):
         "mails": [_serialize_mail(m) for m in mailler],
         "meta": meta,
     })
+
+
+@mobile_api_bp.route("/mail/attachment", methods=["GET"])
+@require_api_user
+def api_mail_attachment(user_id):
+    user = find_user_by_id(user_id)
+    if not user:
+        return jsonify({"error": "Kullanıcı bulunamadı."}), 404
+
+    mail_config, _ = resolve_active_mail_config(user, {})
+    if not mail_config:
+        return jsonify({"error": "Mail hesabı bağlı değil."}), 400
+
+    mail_id = request.args.get("mail_id", "")
+    folder = request.args.get("folder", "inbox")
+    try:
+        index = int(request.args.get("index", "0"))
+    except ValueError:
+        return jsonify({"error": "Geçersiz ek numarası."}), 400
+
+    try:
+        filename, mime, data = download_mail_attachment(
+            mail_config, folder, mail_id, index
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 404
+
+    return send_file(
+        BytesIO(data),
+        mimetype=mime,
+        as_attachment=True,
+        download_name=filename,
+    )
 
 
 @mobile_api_bp.route("/mail/translate", methods=["POST"])

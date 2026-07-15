@@ -15,7 +15,7 @@ from services.file_service import (
 )
 
 
-DEFAULT_GPT_MODEL = "gpt-5.6"
+DEFAULT_GPT_MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1")
 
 CHAT_SYSTEM_PROMPT = """Sen Kip Asistan adında yardımcı bir Türkçe yapay zeka asistanısın.
 
@@ -34,6 +34,21 @@ Biçimlendirme (çok önemli):
 - Alt gruplar gerekiyorsa "Temel bilgiler:", "Sonuçlar:" gibi düz metin etiket kullan, altına maddeler yaz.
 - Sayısal değerleri normal metin içinde yaz (örnek: Fosfor oranı: %0,038).
 - Gereksiz uzunluk yapma; okunması kolay, sade Türkçe tercih et."""
+
+
+MAIL_REPLY_SYSTEM_PROMPT = """Sen profesyonel bir e-posta asistanısın.
+
+Kurallar:
+- Kullanıcının verdiği ipucu/talimat EN ÖNEMLİ yönergedir; yanıtı önce buna göre yaz.
+- İpucu ile mail içeriği çelişirse ipucuna öncelik ver (kullanıcı bilinçli olarak yönlendiriyor).
+- Gelen maile uygun, kibar ve çözüm odaklı Türkçe yanıt yaz.
+- Türkçe imla ve noktalama kurallarına dikkat et.
+- Markdown kullanma; düz metin yaz.
+- Yanıtı doğrudan gönderilebilir şekilde yaz; açıklama veya yorum ekleme."""
+
+
+def get_gpt_model():
+    return os.getenv("OPENAI_MODEL", DEFAULT_GPT_MODEL)
 
 
 def plain_text_response(text):
@@ -70,19 +85,23 @@ def pdf_to_text(file_storage):
     return text
 
 
-def ask_gpt(prompt):
+def ask_gpt(prompt, system_prompt=None):
     client = get_client()
     if client is None:
         raise Exception("OPENAI_API_KEY bulunamadı.")
 
     response = client.chat.completions.create(
-        model=DEFAULT_GPT_MODEL,
+        model=get_gpt_model(),
         messages=[
-            {"role": "system", "content": CHAT_SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt or CHAT_SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
         ],
     )
     return plain_text_response(response.choices[0].message.content)
+
+
+def ask_gpt_mail_reply(prompt):
+    return ask_gpt(prompt, system_prompt=MAIL_REPLY_SYSTEM_PROMPT)
 
 
 def generate_chat_response(messages):
@@ -95,7 +114,7 @@ def generate_chat_response(messages):
         api_messages.append({"role": msg["role"], "content": msg["content"]})
 
     response = client.chat.completions.create(
-        model=DEFAULT_GPT_MODEL,
+        model=get_gpt_model(),
         messages=api_messages,
     )
     return plain_text_response(response.choices[0].message.content)
@@ -107,7 +126,7 @@ def generate_chat_title(soru):
         raise Exception("OPENAI_API_KEY bulunamadı.")
 
     response = client.chat.completions.create(
-        model=DEFAULT_GPT_MODEL,
+        model=get_gpt_model(),
         messages=[
             {
                 "role": "system",
@@ -131,7 +150,7 @@ def analyze_uploaded_file(uploaded_file, prompt):
             raise Exception("OPENAI_API_KEY bulunamadı.")
 
         response = client.chat.completions.create(
-            model=DEFAULT_GPT_MODEL,
+            model=get_gpt_model(),
             messages=[
                 {"role": "system", "content": CHAT_SYSTEM_PROMPT},
                 {
@@ -172,7 +191,7 @@ def analyze_image(uploaded_file, prompt):
         raise Exception("OPENAI_API_KEY bulunamadı.")
 
     response = client.chat.completions.create(
-        model=DEFAULT_GPT_MODEL,
+        model=get_gpt_model(),
         messages=[
             {"role": "system", "content": CHAT_SYSTEM_PROMPT},
             {

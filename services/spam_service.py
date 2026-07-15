@@ -1,7 +1,7 @@
 import json
 import re
 
-from services.chat_service import DEFAULT_GPT_MODEL, get_client
+from services.chat_service import get_client, get_gpt_model
 from services.mail_settings import get_spam_thresholds, parse_sender_list
 
 SPAM_KEYWORDS = [
@@ -188,7 +188,7 @@ E-postalar:
 
     try:
         response = client.chat.completions.create(
-            model=DEFAULT_GPT_MODEL,
+            model=get_gpt_model(),
             messages=[{"role": "user", "content": prompt}],
             temperature=0,
         )
