@@ -1314,6 +1314,46 @@ body.dialog-open .account-remove-form {
     white-space: nowrap;
 }
 
+.translate-picker {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.translate-lang-select {
+    height: 30px;
+    min-width: 150px;
+    max-width: 200px;
+    padding: 0 28px 0 10px;
+    border: 1px solid #dadce0;
+    border-radius: 16px;
+    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath fill='%235f6368' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E") no-repeat right 8px center;
+    color: var(--gmail-text);
+    font-size: 12px;
+    font-weight: 500;
+    font-family: inherit;
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+}
+
+.translate-lang-select:focus {
+    outline: none;
+    border-color: var(--gmail-blue);
+    box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.15);
+}
+
+.translate-action-btn {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 4px;
+}
+
+.translate-action-btn .material-icons-outlined {
+    font-size: 16px !important;
+}
+
 .translate-btn {
     height: 30px;
     padding: 0 12px;

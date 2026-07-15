@@ -15,7 +15,7 @@ from services.mail_ui import (
     mail_content_preview,
     _normalize_ai_result,
 )
-from services.translate_service import translate_mail_content
+from services.translate_service import resolve_lang, supported_languages, translate_mail_content
 from mail import send_new_mail, send_reply_mail
 from services.chat_service import (
     analyze_uploaded_file,
@@ -457,14 +457,22 @@ def api_mail_translate(user_id):
 
     if not text:
         return jsonify({"error": "Çevrilecek içerik yok."}), 400
-    if target_lang not in ("tr", "en", "de"):
+
+    code, _label = resolve_lang(target_lang)
+    if not code:
         return jsonify({"error": "Geçersiz dil."}), 400
 
     try:
-        translated = translate_mail_content(text, target_lang)
-        return jsonify({"translated": translated, "target_lang": target_lang})
+        translated = translate_mail_content(text, code)
+        return jsonify({"translated": translated, "target_lang": code})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@mobile_api_bp.route("/mail/languages", methods=["GET"])
+@require_api_user
+def api_mail_languages(user_id):
+    return jsonify({"languages": supported_languages()})
 
 
 @mobile_api_bp.route("/mail/ai-reply", methods=["POST"])

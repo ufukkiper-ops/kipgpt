@@ -22,7 +22,10 @@
     const readerBody = document.getElementById("reader-body");
     const readerThread = document.getElementById("reader-thread");
     const readerAttachments = document.getElementById("reader-attachments");
-    const translateButtons = document.querySelectorAll(".translate-btn");
+    const translateLangSelect = document.getElementById("translate-lang-select");
+    const translateActionBtn = document.getElementById("translate-action-btn");
+    const translateOriginalBtn = document.getElementById("translate-original-btn");
+    const TRANSLATE_LANG_KEY = "kipgpt_translate_lang";
     const currentFolder = document.body.dataset.mailFolder || "inbox";
     const currentAccount = document.body.dataset.mailAccount || "";
 
@@ -142,21 +145,21 @@
     }
 
     function updateTranslateButtons() {
-        const defaultTitles = {
-            tr: "Dili algıla ve Türkçe'ye çevir",
-            en: "Detect language and translate to English",
-            de: "Sprache erkennen und ins Deutsche übersetzen",
-        };
-
-        translateButtons.forEach(function (btn) {
-            const lang = btn.dataset.lang;
-            const isActive = lang === currentTranslationLang;
-            btn.classList.toggle("active", isActive);
-            btn.disabled = readerBody?.classList.contains("is-translating");
-            btn.title = isActive
-                ? "Orijinal metni göster"
-                : (defaultTitles[lang] || "Dili algıla ve çevir");
-        });
+        const busy = Boolean(getActiveBodyElement()?.classList.contains("is-translating"));
+        if (translateActionBtn) {
+            translateActionBtn.disabled = busy;
+            translateActionBtn.classList.toggle("active", Boolean(currentTranslationLang));
+            translateActionBtn.title = currentTranslationLang
+                ? "Başka dile çevirmek için dil seçip tekrar basın"
+                : "Seçilen dile çevir";
+        }
+        if (translateLangSelect) {
+            translateLangSelect.disabled = busy;
+        }
+        if (translateOriginalBtn) {
+            translateOriginalBtn.hidden = !currentTranslationLang;
+            translateOriginalBtn.disabled = busy;
+        }
     }
 
     function showOriginalContent() {
@@ -175,9 +178,18 @@
         updateTranslateButtons();
     }
 
+    function getSelectedTranslateLang() {
+        if (!translateLangSelect) return "tr";
+        return translateLangSelect.value || "tr";
+    }
+
     async function translateMail(targetLang) {
         const bodyEl = getActiveBodyElement();
         if (!currentOriginalContent || !bodyEl) return;
+
+        if (!targetLang) {
+            targetLang = getSelectedTranslateLang();
+        }
 
         if (currentTranslationLang === targetLang) {
             showOriginalContent();
@@ -215,6 +227,9 @@
             translationCache[targetLang] = data.translated || "";
             currentTranslationLang = targetLang;
             setReaderBody(translationCache[targetLang], true);
+            try {
+                localStorage.setItem(TRANSLATE_LANG_KEY, targetLang);
+            } catch (_err) {}
         } catch (err) {
             currentTranslationLang = null;
             setReaderBody(previousText, false);
@@ -225,11 +240,32 @@
         }
     }
 
-    translateButtons.forEach(function (btn) {
-        btn.addEventListener("click", function () {
-            translateMail(btn.dataset.lang);
+    if (translateLangSelect) {
+        try {
+            const saved = localStorage.getItem(TRANSLATE_LANG_KEY);
+            if (saved) {
+                const option = Array.from(translateLangSelect.options).find(function (opt) {
+                    return opt.value === saved;
+                });
+                if (option) translateLangSelect.value = saved;
+            }
+        } catch (_err) {}
+        translateLangSelect.addEventListener("change", function () {
+            try {
+                localStorage.setItem(TRANSLATE_LANG_KEY, translateLangSelect.value);
+            } catch (_e) {}
         });
-    });
+    }
+
+    if (translateActionBtn) {
+        translateActionBtn.addEventListener("click", function () {
+            translateMail(getSelectedTranslateLang());
+        });
+    }
+
+    if (translateOriginalBtn) {
+        translateOriginalBtn.addEventListener("click", showOriginalContent);
+    }
 
     function renderMessageAttachments(mail, container) {
         if (!container) return;

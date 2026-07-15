@@ -92,6 +92,10 @@ data class TranslateRequest(val text: String, val target_lang: String)
 
 data class TranslateResponse(val translated: String, val target_lang: String)
 
+data class MailLanguageOption(val code: String, val label: String)
+
+data class MailLanguagesResponse(val languages: List<MailLanguageOption> = emptyList())
+
 data class MailAiReplyRequest(
     val mail_id: String = "",
     val folder: String = "inbox",

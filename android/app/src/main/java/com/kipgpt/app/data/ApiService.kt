@@ -82,6 +82,9 @@ interface KipGptApi {
     @POST("mail/translate")
     suspend fun translate(@Body body: TranslateRequest): TranslateResponse
 
+    @GET("mail/languages")
+    suspend fun mailLanguages(): MailLanguagesResponse
+
     @POST("mail/ai-reply")
     suspend fun generateMailAiReply(@Body body: MailAiReplyRequest): MailAiReplyResponse
 

@@ -16,7 +16,7 @@ from services.mail_contacts import (
     remember_contacts_from_fields,
     remember_contacts_from_mails,
 )
-from services.translate_service import translate_mail_content
+from services.translate_service import resolve_lang, supported_languages, translate_mail_content
 from services.mail_ui import (
     FOLDERS,
     FOLDER_LABELS,
@@ -108,17 +108,25 @@ def mail_translate():
     if not text:
         return jsonify({"error": "Çevrilecek içerik yok."}), 400
 
-    if target_lang not in ("tr", "en", "de"):
+    code, _label = resolve_lang(target_lang)
+    if not code:
         return jsonify({"error": "Geçersiz dil seçimi."}), 400
 
     try:
-        translated = translate_mail_content(text, target_lang)
+        translated = translate_mail_content(text, code)
         return jsonify({
             "translated": translated,
-            "target_lang": target_lang,
+            "target_lang": code,
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@mail_bp.route("/mail/languages", methods=["GET"])
+def mail_languages():
+    if "user" not in session:
+        return jsonify({"error": "Giriş gerekli."}), 401
+    return jsonify({"languages": supported_languages()})
 
 
 @mail_bp.route("/mail/ai-compose", methods=["POST"])
@@ -311,5 +319,6 @@ def mail_page():
         mail_contacts=mail_contacts,
         calendar_reminders=calendar_reminders,
         file_library=file_library,
-        ui_version="gmail-v45",
+        translate_languages=supported_languages(),
+        ui_version="gmail-v46",
     )

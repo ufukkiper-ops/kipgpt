@@ -277,10 +277,21 @@
                         <div class="reader-header-top">
                             <h1 class="reader-subject" id="reader-subject"></h1>
                             <div class="reader-translate-bar" id="reader-translate-bar">
-                                <span class="translate-label">Dili algıla ve şu dile çevir:</span>
-                                <button type="button" class="translate-btn" data-lang="tr" title="Algılanan dilden Türkçe'ye çevir">Türkçe</button>
-                                <button type="button" class="translate-btn" data-lang="en" title="Detect language and translate to English">English</button>
-                                <button type="button" class="translate-btn" data-lang="de" title="Sprache erkennen und ins Deutsche übersetzen">Deutsch</button>
+                                <span class="translate-label">Dili algıla ve çevir:</span>
+                                <div class="translate-picker">
+                                    <select id="translate-lang-select" class="translate-lang-select" aria-label="Hedef dil" title="Hedef dil seçin">
+                                        {% for lang in translate_languages %}
+                                        <option value="{{ lang.code }}"{% if lang.code == 'tr' %} selected{% endif %}>{{ lang.label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <button type="button" class="translate-btn translate-action-btn" id="translate-action-btn" title="Seçilen dile çevir">
+                                        <span class="material-icons-outlined">translate</span>
+                                        Çevir
+                                    </button>
+                                    <button type="button" class="translate-btn translate-original-btn" id="translate-original-btn" title="Orijinal metni göster" hidden>
+                                        Orijinal
+                                    </button>
+                                </div>
                                 <button type="button" class="translate-btn ai-summary-btn" id="ai-summary-btn" title="AI ile özetle ve yorumla">
                                     <span class="material-icons-outlined">summarize</span>
                                     AI Özet
@@ -790,7 +801,7 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/speech.js') }}?v=2"></script>
-<script src="{{ url_for('static', filename='js/mail.js') }}?v=51"></script>
+<script src="{{ url_for('static', filename='js/mail.js') }}?v=52"></script>
 <script src="{{ url_for('static', filename='js/mail-tools.js') }}?v=1"></script>
 <script id="provider-data" type="application/json">{{ providers|tojson }}</script>
 <script id="sensitivity-data" type="application/json">{{ sensitivity_presets|tojson }}</script>

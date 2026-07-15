@@ -40,7 +40,11 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -410,6 +414,31 @@ fun MailDetailScreen(
     val mailState = remember { mutableStateOf(mail) }
     val content = remember { mutableStateOf(mail.content) }
     val translatedLang = remember { mutableStateOf<String?>(null) }
+    val selectedLang = remember { mutableStateOf("tr") }
+    val langMenuOpen = remember { mutableStateOf(false) }
+    val languages = remember {
+        mutableStateOf(
+            listOf(
+                "tr" to "Türkçe",
+                "en" to "İngilizce",
+                "de" to "Almanca",
+                "fr" to "Fransızca",
+                "es" to "İspanyolca",
+                "it" to "İtalyanca",
+                "pt" to "Portekizce",
+                "ru" to "Rusça",
+                "ar" to "Arapça",
+                "zh" to "Çince",
+                "ja" to "Japonca",
+                "ko" to "Korece",
+                "nl" to "Felemenkçe",
+                "pl" to "Lehçe",
+                "uk" to "Ukraynaca",
+                "hi" to "Hintçe",
+                "az" to "Azerbaycan Türkçesi",
+            )
+        )
+    }
     val loading = remember { mutableStateOf(false) }
     val detailLoading = remember { mutableStateOf(true) }
     val downloadingIndex = remember { mutableStateOf<Int?>(null) }
@@ -505,6 +534,20 @@ fun MailDetailScreen(
             snackbar.showSnackbar(e.message ?: "Mail yüklenemedi")
         } finally {
             detailLoading.value = false
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        try {
+            val response = apiClient.api.mailLanguages()
+            if (response.languages.isNotEmpty()) {
+                languages.value = response.languages.map { it.code to it.label }
+                if (languages.value.none { it.first == selectedLang.value }) {
+                    selectedLang.value = languages.value.first().first
+                }
+            }
+        } catch (_: Exception) {
+            // keep fallback language list
         }
     }
 
@@ -731,19 +774,55 @@ fun MailDetailScreen(
             Spacer(Modifier.height(8.dp))
 
             Text(
-                "Dili algıla ve şu dile çevir:",
+                "Dili algıla ve çevir:",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("tr" to "Türkçe", "en" to "English", "de" to "Deutsch").forEach { (code, label) ->
-                    FilterChip(
-                        selected = translatedLang.value == code,
-                        onClick = { translate(code) },
-                        label = { Text(label) },
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                val selectedLabel = languages.value.firstOrNull { it.first == selectedLang.value }?.second
+                    ?: selectedLang.value
+                ExposedDropdownMenuBox(
+                    expanded = langMenuOpen.value,
+                    onExpandedChange = { langMenuOpen.value = !langMenuOpen.value },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    OutlinedTextField(
+                        value = selectedLabel,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Dil") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = langMenuOpen.value) },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth(),
                         enabled = !loading.value && !detailLoading.value,
                     )
+                    ExposedDropdownMenu(
+                        expanded = langMenuOpen.value,
+                        onDismissRequest = { langMenuOpen.value = false },
+                    ) {
+                        languages.value.forEach { (code, label) ->
+                            DropdownMenuItem(
+                                text = { Text(label) },
+                                onClick = {
+                                    selectedLang.value = code
+                                    langMenuOpen.value = false
+                                },
+                            )
+                        }
+                    }
+                }
+                Button(
+                    onClick = { translate(selectedLang.value) },
+                    enabled = !loading.value && !detailLoading.value,
+                ) {
+                    Icon(Icons.Filled.Translate, contentDescription = null)
+                    Spacer(Modifier.size(6.dp))
+                    Text(if (translatedLang.value == selectedLang.value) "Orijinal" else "Çevir")
                 }
             }
 
