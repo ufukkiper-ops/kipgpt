@@ -8,7 +8,6 @@ import re
 import smtplib
 from datetime import datetime
 from email import encoders
-from email.mime.application import MIMEApplication
 from email.mime.audio import MIMEAudio
 from email.mime.base import MIMEBase
 from email.mime.image import MIMEImage
@@ -745,14 +744,14 @@ def _attach_files(msg, attachments):
             part = MIMEImage(data, _subtype=subtype or "jpeg")
         elif maintype == "audio":
             part = MIMEAudio(data, _subtype=subtype or "octet-stream")
-        elif maintype == "application":
-            part = MIMEApplication(data, _subtype=subtype if subtype != "octet-stream" else None)
         else:
-            part = MIMEBase(maintype, subtype or "octet-stream")
+            part = MIMEBase(maintype or "application", subtype or "octet-stream")
             part.set_payload(data)
             encoders.encode_base64(part)
 
         part.add_header("Content-Disposition", "attachment", filename=filename)
+        if "Content-Type" not in part:
+            part.add_header("Content-Type", f"{maintype or 'application'}/{subtype or 'octet-stream'}")
         msg.attach(part)
 
 

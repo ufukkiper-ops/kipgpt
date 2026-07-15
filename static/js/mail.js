@@ -969,8 +969,9 @@
                     ? "manual-reply-attach-preview"
                     : "reply-attach-preview";
             const previewEl = document.getElementById(previewId);
+            const file = input.files && input.files[0];
 
-            if (!input.files.length) {
+            if (!file) {
                 clearAttachmentPreview(input, previewEl);
                 return;
             }
@@ -981,7 +982,18 @@
                 return;
             }
 
-            showAttachPreview(input.files[0], previewEl, input);
+            showAttachPreview(file, previewEl, input);
+        });
+    });
+
+    document.querySelectorAll(".attach-btn").forEach(function (label) {
+        label.addEventListener("click", function (e) {
+            const input = label.querySelector(".mail-attach-input");
+            if (!input) return;
+            // Some browsers ignore label->hidden file input; force picker.
+            if (e.target === input) return;
+            e.preventDefault();
+            input.click();
         });
     });
 
@@ -1418,7 +1430,29 @@
     setupSpeechControls();
 
     function setupSpeechControls() {
-        if (!window.KipSpeech) return;
+        const micPairs = [
+            ["manual-reply-mic", "manual-reply-body"],
+            ["ai-instruction-mic", "ai-user-instruction"],
+            ["ai-draft-mic", "ai-draft-editor"],
+            ["compose-mic", "compose-body"],
+            ["compose-ai-mic", "compose-ai-instruction"],
+        ];
+
+        function bindAllMics() {
+            if (!window.KipSpeech) return;
+            micPairs.forEach(function (pair) {
+                const button = document.getElementById(pair[0]);
+                const field = document.getElementById(pair[1]);
+                if (button && field) {
+                    KipSpeech.bindMicToField(button, field, { append: true });
+                }
+            });
+        }
+
+        if (!window.KipSpeech) {
+            // speech.js async/cache miss fallback
+            window.setTimeout(bindAllMics, 300);
+        }
 
         const readerSpeakBtn = document.getElementById("reader-speak-btn");
         const readerStopBtn = document.getElementById("reader-stop-speak-btn");
@@ -1432,12 +1466,16 @@
         }
 
         function updateReaderStopButton() {
-            if (!readerStopBtn) return;
+            if (!readerStopBtn || !window.KipSpeech) return;
             readerStopBtn.hidden = !KipSpeech.isSpeaking();
         }
 
         if (readerSpeakBtn) {
             readerSpeakBtn.addEventListener("click", function () {
+                if (!window.KipSpeech) {
+                    window.alert("Sesli okuma yüklenemedi. Sayfayı yenileyin.");
+                    return;
+                }
                 if (KipSpeech.isSpeaking()) {
                     KipSpeech.stopSpeaking();
                     updateReaderStopButton();
@@ -1453,23 +1491,20 @@
 
         if (readerStopBtn) {
             readerStopBtn.addEventListener("click", function () {
+                if (!window.KipSpeech) return;
                 KipSpeech.stopSpeaking();
                 updateReaderStopButton();
             });
         }
 
-        [
-            ["manual-reply-mic", "manual-reply-body"],
-            ["ai-instruction-mic", "ai-user-instruction"],
-            ["ai-draft-mic", "ai-draft-editor"],
-            ["compose-mic", "compose-body"],
-            ["compose-ai-mic", "compose-ai-instruction"],
-        ].forEach(function (pair) {
-            const button = document.getElementById(pair[0]);
-            const field = document.getElementById(pair[1]);
-            if (button && field) {
-                KipSpeech.bindMicToField(button, field, { append: true });
-            }
+        bindAllMics();
+
+        // Re-bind when panels open (in case nodes were added later)
+        [aiReplyBtn, replyBtn, composeBtn, composeAiToggle].forEach(function (btn) {
+            if (!btn) return;
+            btn.addEventListener("click", function () {
+                window.setTimeout(bindAllMics, 50);
+            });
         });
     }
 
