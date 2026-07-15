@@ -24,6 +24,7 @@ fun MainScreen(
     sessionManager: SessionManager,
     onLogout: () -> Unit,
 ) {
+    // 0 = Mail (giriş sonrası varsayılan), 1 = Sohbet, 2 = Ayarlar
     val selectedTab = rememberSaveable { mutableIntStateOf(0) }
 
     Scaffold(
@@ -32,14 +33,14 @@ fun MainScreen(
                 NavigationBarItem(
                     selected = selectedTab.intValue == 0,
                     onClick = { selectedTab.intValue = 0 },
-                    icon = { Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = "Sohbet") },
-                    label = { Text("Sohbet") },
+                    icon = { Icon(Icons.Default.Email, contentDescription = "Mail") },
+                    label = { Text("Mail") },
                 )
                 NavigationBarItem(
                     selected = selectedTab.intValue == 1,
                     onClick = { selectedTab.intValue = 1 },
-                    icon = { Icon(Icons.Default.Email, contentDescription = "Mail") },
-                    label = { Text("Mail") },
+                    icon = { Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = "Sohbet") },
+                    label = { Text("Sohbet") },
                 )
                 NavigationBarItem(
                     selected = selectedTab.intValue == 2,
@@ -51,11 +52,11 @@ fun MainScreen(
         },
     ) { padding ->
         when (selectedTab.intValue) {
-            0 -> ChatScreen(
+            0 -> MailScreen(
                 apiClient = apiClient,
                 modifier = Modifier.fillMaxSize().padding(padding),
             )
-            1 -> MailScreen(
+            1 -> ChatScreen(
                 apiClient = apiClient,
                 modifier = Modifier.fillMaxSize().padding(padding),
             )

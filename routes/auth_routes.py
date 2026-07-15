@@ -68,7 +68,7 @@ def register():
             save_users(users)
             _init_user_data(email)
             session["user"] = email
-            return redirect(url_for("chat.index"))
+            return redirect(url_for("mail.mail_page"))
 
     return render_template(
         "register.html",
@@ -170,7 +170,7 @@ def google_auth_callback():
 
     _init_user_data(email)
     session["user"] = email
-    return redirect(url_for("chat.index"))
+    return redirect(url_for("mail.mail_page"))
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])
@@ -186,7 +186,7 @@ def login():
         if user:
             _init_user_data(get_user_id(user))
             session["user"] = get_user_id(user)
-            return redirect(url_for("chat.index"))
+            return redirect(url_for("mail.mail_page"))
         else:
             error = "E-posta veya şifre hatalı."
 
