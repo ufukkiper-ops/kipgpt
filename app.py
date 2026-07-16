@@ -50,6 +50,11 @@ def create_app():
 app = create_app()
 
 
+@app.get("/health")
+def health():
+    return {"ok": True, "service": "kipgpt"}
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5001))
     is_local = not os.environ.get("RENDER")
