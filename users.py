@@ -6,101 +6,48 @@ import re
 USERS_FILE = "users.json"
 DEV_QUICK_USERNAME = "q"
 DEV_QUICK_PASSWORD = "q"
-DEV_QUICK_MAIL_TARGETS = (
-    "ufukkiper@pamecarbon.com",
-    "info@pamecarbon.com",
-)
-DEV_QUICK_MAIL_IDS = {
-    "ufukkiper@pamecarbon.com": "dev_ufuk_pame",
-    "info@pamecarbon.com": "dev_info_pame",
-}
 
 
 def is_dev_quick_login(identifier, password):
+    from services.security import allow_dev_quick_login
+
+    if not allow_dev_quick_login():
+        return False
     user_key = (identifier or "").strip().lower()
     pass_key = (password or "").strip()
     return user_key == DEV_QUICK_USERNAME and pass_key == DEV_QUICK_PASSWORD
 
 
-def _find_mail_account_source(email):
-    target = (email or "").strip().lower()
-    for user in load_users():
-        for account in user.get("mail_accounts") or []:
-            if (account.get("email") or "").strip().lower() == target and account.get("password"):
-                return dict(account)
-
-        legacy = user.get("mail") or {}
-        user_email = (user.get("email") or user.get("username") or "").strip().lower()
-        if user_email == target and legacy.get("password"):
-            return {
-                "email": target,
-                "label": legacy.get("label") or target,
-                "provider": legacy.get("provider", "custom"),
-                "password": legacy.get("password", ""),
-                "imap_server": legacy.get("imap_server", "mail.pamecarbon.com"),
-                "smtp_server": legacy.get("smtp_server", "mail.pamecarbon.com"),
-                "imap_port": str(legacy.get("imap_port") or 993),
-                "smtp_port": str(legacy.get("smtp_port") or 587),
-            }
-    return None
-
-
 def ensure_dev_quick_mail_accounts():
+    """Yalnızca yerel geliştirme. Başka kullanıcılardan şifre kopyalamaz."""
+    from services.security import allow_dev_quick_login
+
+    if not allow_dev_quick_login():
+        return None
+
     users = load_users()
-    q_index = None
     for index, user in enumerate(users):
-        if (user.get("email") or "").strip().lower() == DEV_QUICK_USERNAME:
-            q_index = index
-            break
-
-    if q_index is None:
-        return ensure_dev_quick_user()
-
-    q_user = users[q_index]
-    accounts = []
-
-    for target in DEV_QUICK_MAIL_TARGETS:
-        source = _find_mail_account_source(target)
-        if not source:
+        if (user.get("email") or "").strip().lower() != DEV_QUICK_USERNAME:
             continue
-
-        accounts.append({
-            "id": DEV_QUICK_MAIL_IDS.get(target, f"dev_{target.split('@')[0]}"),
-            "email": target,
-            "label": source.get("label") or target,
-            "provider": source.get("provider", "custom"),
-            "password": source.get("password", ""),
-            "imap_server": source.get("imap_server", "mail.pamecarbon.com"),
-            "smtp_server": source.get("smtp_server", "mail.pamecarbon.com"),
-            "imap_port": str(source.get("imap_port") or 993),
-            "smtp_port": str(source.get("smtp_port") or 587),
-        })
-
-    if accounts:
-        q_user["mail_accounts"] = accounts
-        active = q_user.get("active_mail_account")
-        if not active or not any(a["id"] == active for a in accounts):
-            q_user["active_mail_account"] = accounts[0]["id"]
-
-    for user in users:
-        if (user.get("email") or "").strip().lower() == "ufukkiper@pamecarbon.com":
-            if user.get("mail_settings"):
-                q_user["mail_settings"] = dict(user["mail_settings"])
-            break
-    else:
-        q_user.setdefault("mail_settings", {
+        user.setdefault("mail_accounts", [])
+        user.setdefault("mail_settings", {
             "inbox_fetch_count": 150,
             "auto_spam_filter": False,
             "spam_move_to_folder": False,
             "spam_use_ai": False,
         })
-
-    users[q_index] = q_user
-    save_users(users)
-    return q_user
+        users[index] = user
+        save_users(users)
+        return user
+    return None
 
 
 def ensure_dev_quick_user():
+    from services.security import allow_dev_quick_login
+
+    if not allow_dev_quick_login():
+        return None
+
     users = load_users()
     for index, user in enumerate(users):
         email = (user.get("email") or "").strip().lower()
@@ -113,7 +60,7 @@ def ensure_dev_quick_user():
             user.setdefault("mail_accounts", [])
             users[index] = user
             save_users(users)
-            return ensure_dev_quick_mail_accounts()
+            return ensure_dev_quick_mail_accounts() or user
 
     user = {
         "email": DEV_QUICK_USERNAME,
@@ -124,7 +71,7 @@ def ensure_dev_quick_user():
     }
     users.append(user)
     save_users(users)
-    return ensure_dev_quick_mail_accounts()
+    return ensure_dev_quick_mail_accounts() or user
 
 
 def authenticate_local_user(identifier, password):

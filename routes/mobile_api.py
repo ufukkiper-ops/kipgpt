@@ -397,9 +397,20 @@ def api_list_mail_accounts(user_id):
 @mobile_api_bp.route("/mail/accounts", methods=["POST"])
 @require_api_user
 def api_add_mail_account(user_id):
+    from services.security import mail_account_add_limiter
+
     user = find_user_by_id(user_id)
     if not user:
         return jsonify({"error": "Kullanıcı bulunamadı."}), 404
+
+    try:
+        mail_account_add_limiter.check(
+            f"mail-add:{user_id}",
+            limit=8,
+            window_seconds=3600,
+        )
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 429
 
     payload = request.get_json(silent=True) or {}
     try:
@@ -454,7 +465,10 @@ def api_mail_list(user_id):
     if not user:
         return jsonify({"error": "Kullanıcı bulunamadı."}), 404
 
-    mail_config, active_account, settings = _mail_context(user, _requested_account_id())
+    requested_account = _requested_account_id()
+    mail_config, active_account, settings = _mail_context(user, requested_account)
+    if requested_account and not active_account:
+        return jsonify({"error": "Mail hesabı bulunamadı."}), 404
     if not mail_config:
         return jsonify({"error": "Mail hesabı bağlı değil. Mail hesabı ekleyin."}), 400
 
@@ -489,7 +503,10 @@ def api_mail_detail(user_id):
     if not user:
         return jsonify({"error": "Kullanıcı bulunamadı."}), 404
 
-    mail_config, active_account, _settings = _mail_context(user, _requested_account_id())
+    requested_account = _requested_account_id()
+    mail_config, active_account, _settings = _mail_context(user, requested_account)
+    if requested_account and not active_account:
+        return jsonify({"error": "Mail hesabı bulunamadı."}), 404
     if not mail_config:
         return jsonify({"error": "Mail hesabı bağlı değil."}), 400
 

@@ -22,16 +22,18 @@ from routes.chat_routes import chat_bp
 from routes.mail_page import mail_bp
 from routes.mobile_api import mobile_api_bp
 from routes.tools_routes import tools_bp
+from services.security import allow_dev_quick_login, resolve_flask_secret_key
 from users import ensure_dev_quick_user, ensure_dev_quick_mail_accounts, ensure_users_file
 
 
 def create_app():
     ensure_users_file()
-    ensure_dev_quick_user()
-    ensure_dev_quick_mail_accounts()
+    if allow_dev_quick_login():
+        ensure_dev_quick_user()
+        ensure_dev_quick_mail_accounts()
 
     application = Flask(__name__)
-    application.secret_key = os.getenv("FLASK_SECRET_KEY", "gizli123")
+    application.secret_key = resolve_flask_secret_key()
     application.config["TEMPLATES_AUTO_RELOAD"] = True
 
     application.register_blueprint(auth_bp)

@@ -1,4 +1,5 @@
 from services.google_auth import get_fresh_access_token
+from services.security import validate_mail_host, validate_mail_port
 
 MAIL_PRESETS = {
     "gmail": {
@@ -90,14 +91,30 @@ def resolve_mail_config_from_account(account, owner_user_id=None):
     if not imap_server or not smtp_server:
         return None
 
+    try:
+        imap_server = validate_mail_host(imap_server, label="IMAP sunucu")
+        smtp_server = validate_mail_host(smtp_server, label="SMTP sunucu")
+        imap_port = validate_mail_port(
+            account.get("imap_port") or preset["imap_port"],
+            default=993,
+            label="IMAP port",
+        )
+        smtp_port = validate_mail_port(
+            account.get("smtp_port") or preset["smtp_port"],
+            default=587,
+            label="SMTP port",
+        )
+    except ValueError:
+        return None
+
     return {
         "email": email,
         "password": password,
         "auth_type": "password",
         "imap_server": imap_server,
-        "imap_port": int(account.get("imap_port") or preset["imap_port"]),
+        "imap_port": imap_port,
         "smtp_server": smtp_server,
-        "smtp_port": int(account.get("smtp_port") or preset["smtp_port"]),
+        "smtp_port": smtp_port,
         "account_id": account.get("id"),
     }
 

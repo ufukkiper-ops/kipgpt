@@ -1,7 +1,15 @@
 import uuid
 
 from services.mail_config import resolve_mail_config_from_account
+from services.security import (
+    decrypt_account_secrets,
+    encrypt_account_secrets,
+    validate_mail_host,
+    validate_mail_port,
+)
 from users import is_valid_email, load_users, save_users
+
+MAX_MAIL_ACCOUNTS_PER_USER = 10
 
 
 def _account_id():
@@ -13,12 +21,13 @@ def _normalize_account(raw, fallback_email=""):
     if not email:
         return None
 
+    decrypted = decrypt_account_secrets(raw)
     account = {
         "id": raw.get("id") or _account_id(),
         "email": email,
         "label": (raw.get("label") or email).strip(),
         "provider": raw.get("provider", "custom"),
-        "password": raw.get("password", ""),
+        "password": decrypted.get("password", ""),
         "imap_server": raw.get("imap_server", ""),
         "smtp_server": raw.get("smtp_server", ""),
         "imap_port": str(raw.get("imap_port") or 993),
@@ -26,8 +35,8 @@ def _normalize_account(raw, fallback_email=""):
     }
 
     for key in ("access_token", "refresh_token", "token_expiry", "scopes"):
-        if raw.get(key):
-            account[key] = raw[key]
+        if decrypted.get(key) or raw.get(key):
+            account[key] = decrypted.get(key, raw.get(key))
 
     return account
 
@@ -54,11 +63,12 @@ def get_user_mail_accounts(user):
 
 def persist_mail_accounts(user_id, accounts):
     users = load_users()
+    sealed = [encrypt_account_secrets(dict(a)) for a in accounts]
     for index, user in enumerate(users):
         if (user.get("email") or user.get("username") or "").strip() == user_id:
-            users[index]["mail_accounts"] = accounts
-            if accounts and not users[index].get("active_mail_account"):
-                users[index]["active_mail_account"] = accounts[0]["id"]
+            users[index]["mail_accounts"] = sealed
+            if sealed and not users[index].get("active_mail_account"):
+                users[index]["active_mail_account"] = sealed[0]["id"]
             save_users(users)
             return True
     return False
@@ -68,6 +78,19 @@ def ensure_user_mail_accounts(user):
     user_id = (user.get("email") or user.get("username") or "").strip()
     accounts = get_user_mail_accounts(user)
     if user.get("mail_accounts"):
+        # Eski düz metin kayıtları şifreli forma geçir
+        needs_seal = False
+        for raw in user.get("mail_accounts") or []:
+            pwd = (raw.get("password") or "")
+            if pwd and not str(pwd).startswith("enc:v1:"):
+                needs_seal = True
+                break
+            refresh = (raw.get("refresh_token") or "")
+            if refresh and not str(refresh).startswith("enc:v1:"):
+                needs_seal = True
+                break
+        if needs_seal and accounts:
+            persist_mail_accounts(user_id, accounts)
         return accounts
 
     if accounts:
@@ -90,10 +113,14 @@ def list_accounts_for_ui(user):
 
 def get_account_by_id(user, account_id):
     accounts = ensure_user_mail_accounts(user)
+    if not accounts:
+        return None
+    if not account_id:
+        return accounts[0]
     for account in accounts:
         if account["id"] == account_id:
             return account
-    return accounts[0] if accounts else None
+    return None
 
 
 def get_active_account_id(user, session):
@@ -134,10 +161,15 @@ def resolve_active_mail_config(user, session, account_id=None):
         return None, None
 
     owner_user_id = (user.get("email") or user.get("username") or "").strip()
-    active_id = account_id or get_active_account_id(user, session)
-    account = get_account_by_id(user, active_id)
-    if not account:
-        return None, None
+    if account_id:
+        account = get_account_by_id(user, account_id)
+        if not account:
+            return None, None
+    else:
+        active_id = get_active_account_id(user, session)
+        account = get_account_by_id(user, active_id)
+        if not account:
+            return None, None
 
     config = resolve_mail_config_from_account(account, owner_user_id)
     return config, account
@@ -159,8 +191,13 @@ def build_account_from_form(form):
         raise ValueError("Geçerli bir e-posta adresi girin.")
     if not mail_password:
         raise ValueError("E-posta şifresi veya uygulama şifresi gerekli.")
-    if provider == "custom" and (not imap_server or not smtp_server):
-        raise ValueError("Özel sağlayıcı için IMAP ve SMTP sunucularını girin.")
+    if provider == "custom":
+        if not imap_server or not smtp_server:
+            raise ValueError("Özel sağlayıcı için IMAP ve SMTP sunucularını girin.")
+        imap_server = validate_mail_host(imap_server, label="IMAP sunucu")
+        smtp_server = validate_mail_host(smtp_server, label="SMTP sunucu")
+        imap_port = str(validate_mail_port(imap_port, default=993, label="IMAP port"))
+        smtp_port = str(validate_mail_port(smtp_port, default=587, label="SMTP port"))
 
     return _normalize_account({
         "id": _account_id(),
@@ -175,14 +212,38 @@ def build_account_from_form(form):
     })
 
 
+def verify_mail_account_login(account):
+    """IMAP ile kimlik doğrulaması yapmadan hesabı kaydetme."""
+    from mail import connect_mail
+
+    config = resolve_mail_config_from_account(account)
+    if not config:
+        raise ValueError("Mail yapılandırması geçersiz.")
+    mail = connect_mail(config, "INBOX")
+    try:
+        mail.logout()
+    except Exception:
+        pass
+
+
 def add_mail_account(user, form):
     user_id = (user.get("email") or user.get("username") or "").strip()
     accounts = ensure_user_mail_accounts(user)
+    if len(accounts) >= MAX_MAIL_ACCOUNTS_PER_USER:
+        raise ValueError(f"En fazla {MAX_MAIL_ACCOUNTS_PER_USER} mail hesabı eklenebilir.")
+
     new_account = build_account_from_form(form)
 
     for account in accounts:
         if account["email"] == new_account["email"]:
             raise ValueError("Bu e-posta adresi zaten ekli.")
+
+    try:
+        verify_mail_account_login(new_account)
+    except ValueError:
+        raise
+    except Exception as exc:
+        raise ValueError(f"Mail girişi başarısız: {exc}") from exc
 
     accounts.append(new_account)
     persist_mail_accounts(user_id, accounts)
@@ -233,7 +294,7 @@ def update_account_oauth_tokens(user_id, account_id, token_data):
                 break
 
         if updated:
-            users[index]["mail_accounts"] = accounts
+            users[index]["mail_accounts"] = [encrypt_account_secrets(dict(a)) for a in accounts]
             save_users(users)
             return True
     return False

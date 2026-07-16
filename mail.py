@@ -63,11 +63,19 @@ def _smtp_login(server, config):
     server.login(config["email"], config["password"])
 
 
+def _safe_mail_endpoints(config):
+    from services.security import validate_mail_host, validate_mail_port
+
+    imap_host = validate_mail_host(config.get("imap_server"), label="IMAP sunucu")
+    smtp_host = validate_mail_host(config.get("smtp_server"), label="SMTP sunucu")
+    imap_port = validate_mail_port(config.get("imap_port", 993), default=993, label="IMAP port")
+    smtp_port = validate_mail_port(config.get("smtp_port", 587), default=587, label="SMTP port")
+    return imap_host, imap_port, smtp_host, smtp_port
+
+
 def connect_mail(config, folder="INBOX"):
-    mail = imaplib.IMAP4_SSL(
-        config["imap_server"],
-        config.get("imap_port", 993),
-    )
+    imap_host, imap_port, _, _ = _safe_mail_endpoints(config)
+    mail = imaplib.IMAP4_SSL(imap_host, imap_port)
     _imap_login(mail, config)
     status, _ = mail.select(folder)
     if status != "OK":
@@ -355,10 +363,8 @@ def list_folder_uids(config, folder):
 
 
 def list_imap_folders(config):
-    mail = imaplib.IMAP4_SSL(
-        config["imap_server"],
-        config.get("imap_port", 993),
-    )
+    imap_host, imap_port, _, _ = _safe_mail_endpoints(config)
+    mail = imaplib.IMAP4_SSL(imap_host, imap_port)
     _imap_login(mail, config)
     status, folders = mail.list()
     mail.logout()
@@ -515,10 +521,8 @@ def _uid_move_or_copy(mail_conn, mail_id, dest_folder):
 
 
 def resolve_folder_name(config, candidates):
-    mail = imaplib.IMAP4_SSL(
-        config["imap_server"],
-        config.get("imap_port", 993),
-    )
+    imap_host, imap_port, _, _ = _safe_mail_endpoints(config)
+    mail = imaplib.IMAP4_SSL(imap_host, imap_port)
     _imap_login(mail, config)
 
     for folder in candidates:
@@ -784,7 +788,8 @@ def _send_mail(config, to_email, subject, body, attachments=None, cc=None, bcc=N
 
     recipients = list(dict.fromkeys(to_list + cc_list + bcc_list))
 
-    server = smtplib.SMTP(config["smtp_server"], config.get("smtp_port", 587))
+    _, _, smtp_host, smtp_port = _safe_mail_endpoints(config)
+    server = smtplib.SMTP(smtp_host, smtp_port, timeout=30)
     server.starttls()
     _smtp_login(server, config)
     server.sendmail(config["email"], recipients, msg.as_string())
