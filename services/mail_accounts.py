@@ -67,8 +67,15 @@ def persist_mail_accounts(user_id, accounts):
     for index, user in enumerate(users):
         if (user.get("email") or user.get("username") or "").strip() == user_id:
             users[index]["mail_accounts"] = sealed
-            if sealed and not users[index].get("active_mail_account"):
-                users[index]["active_mail_account"] = sealed[0]["id"]
+            if sealed:
+                active = users[index].get("active_mail_account")
+                if not active or not any(a.get("id") == active for a in sealed):
+                    users[index]["active_mail_account"] = sealed[0]["id"]
+            else:
+                users[index]["active_mail_account"] = ""
+                # Eski tek-hesap alanını da temizle; yoksa hesap geri gelebilir
+                if "mail" in users[index]:
+                    users[index]["mail"] = {}
             save_users(users)
             return True
     return False
@@ -77,7 +84,7 @@ def persist_mail_accounts(user_id, accounts):
 def ensure_user_mail_accounts(user):
     user_id = (user.get("email") or user.get("username") or "").strip()
     accounts = get_user_mail_accounts(user)
-    if user.get("mail_accounts"):
+    if "mail_accounts" in (user or {}):
         # Eski düz metin kayıtları şifreli forma geçir
         needs_seal = False
         for raw in user.get("mail_accounts") or []:
@@ -137,11 +144,23 @@ def get_active_account_id(user, session):
 
 def set_active_account(user, session, account_id):
     accounts = ensure_user_mail_accounts(user)
+    account_id = (account_id or "").strip()
+    user_id = (user.get("email") or user.get("username") or "").strip()
+
+    if not account_id:
+        session.pop("mail_account_id", None)
+        users = load_users()
+        for index, item in enumerate(users):
+            if (item.get("email") or item.get("username") or "").strip() == user_id:
+                users[index]["active_mail_account"] = ""
+                save_users(users)
+                return True
+        return False
+
     if not any(a["id"] == account_id for a in accounts):
         return False
 
     session["mail_account_id"] = account_id
-    user_id = (user.get("email") or user.get("username") or "").strip()
 
     users = load_users()
     for index, item in enumerate(users):
@@ -270,13 +289,16 @@ def add_mail_account_from_data(user, data):
 def remove_mail_account(user, account_id):
     user_id = (user.get("email") or user.get("username") or "").strip()
     accounts = ensure_user_mail_accounts(user)
+    account_id = (account_id or "").strip()
+    if not account_id:
+        raise ValueError("Silinecek hesap seçilmedi.")
 
-    if len(accounts) <= 1:
-        raise ValueError("Son mail hesabı silinemez.")
+    remaining = [a for a in accounts if a["id"] != account_id]
+    if len(remaining) == len(accounts):
+        raise ValueError("Mail hesabı bulunamadı veya zaten silinmiş.")
 
-    accounts = [a for a in accounts if a["id"] != account_id]
-    persist_mail_accounts(user_id, accounts)
-    return accounts[0]["id"]
+    persist_mail_accounts(user_id, remaining)
+    return remaining[0]["id"] if remaining else ""
 
 
 def update_account_oauth_tokens(user_id, account_id, token_data):

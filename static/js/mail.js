@@ -1553,14 +1553,16 @@
 
     document.querySelectorAll(".account-item-remove").forEach(function (btn) {
         btn.addEventListener("click", function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var form = btn.closest("form");
+            if (!form) return;
             var email = btn.getAttribute("data-confirm-email") || "bu mail hesabını";
             var ok = window.confirm(
                 email + " hesabını silmek istediğinize emin misiniz?\n\nBu işlem geri alınamaz."
             );
-            if (!ok) {
-                e.preventDefault();
-                e.stopPropagation();
-            }
+            if (!ok) return;
+            form.submit();
         });
     });
 

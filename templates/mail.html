@@ -77,12 +77,11 @@
                             <span class="account-item-email">{{ acc.label }}</span>
                             <span class="account-item-addr">{{ acc.email }}</span>
                         </a>
-                        {% if mail_accounts|length > 1 %}
-                        <form method="post" class="account-item-remove-form" action="/mail?folder={{ folder }}{% if active_account_id %}&account={{ active_account_id }}{% endif %}">
+                        <form method="post" class="account-item-remove-form" action="{{ url_for('mail.mail_page', folder=folder) }}">
                             <input type="hidden" name="islem" value="hesap_sil">
                             <input type="hidden" name="account_id" value="{{ acc.id }}">
                             <button
-                                type="submit"
+                                type="button"
                                 class="account-item-remove"
                                 title="Hesabı kaldır"
                                 aria-label="{{ acc.email }} hesabını kaldır"
@@ -90,7 +89,6 @@
                                 <span class="material-icons-outlined" aria-hidden="true">close</span>
                             </button>
                         </form>
-                        {% endif %}
                     </div>
                     {% else %}
                     <p class="account-empty">Henüz hesap yok</p>
@@ -864,6 +862,6 @@
 <script src="{{ url_for('static', filename='js/speech.js') }}?v=2"></script>
 <script id="provider-data" type="application/json">{{ providers|tojson }}</script>
 <script id="sensitivity-data" type="application/json">{{ sensitivity_presets|tojson }}</script>
-<script src="{{ url_for('static', filename='js/mail.js') }}?v=63"></script>
+<script src="{{ url_for('static', filename='js/mail.js') }}?v=64"></script>
 <script src="{{ url_for('static', filename='js/mail-tools.js') }}?v=3"></script>
 {% endblock %}

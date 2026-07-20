@@ -53,7 +53,7 @@ def _mail_url(folder="inbox", account_id=None, search=""):
 @mail_bp.route("/mail-version")
 def mail_version():
     return {
-        "ui_version": "gmail-v58",
+        "ui_version": "gmail-v59",
         "layout": "gmail-sidebar",
         "message": "Çoklu mail hesabı desteği",
     }
@@ -250,14 +250,16 @@ def mail_page():
     error = session.pop("mail_flash_error", "") or error
     success_message = session.pop("mail_flash_success", "") or success_message
 
-    requested_account = request.args.get("account") or request.form.get("account_id")
+    islem = request.form.get("islem", "") if request.method == "POST" else ""
+    # Silme formundaki account_id hedef hesaptır; aktif hesap yapma.
+    requested_account = request.args.get("account")
+    if not requested_account and islem not in {"hesap_sil", "hesap_ekle"}:
+        requested_account = request.form.get("account_id")
     if requested_account:
         set_active_account(user, session, requested_account)
         user = find_user_by_id(session.get("user"))
 
     if request.method == "POST":
-        islem = request.form.get("islem", "")
-
         if islem == "hesap_ekle":
             try:
                 new_account = add_mail_account(user, request.form)
@@ -272,10 +274,11 @@ def mail_page():
             try:
                 next_id = remove_mail_account(user, account_id)
                 set_active_account(user, session, next_id)
-                success_message = "Mail hesabı silindi."
-                return redirect(_mail_url(folder, next_id))
+                session["mail_flash_success"] = "Mail hesabı silindi."
+                return redirect(_mail_url(folder, next_id or None))
             except Exception as e:
-                error = str(e)
+                session["mail_flash_error"] = str(e)
+                return redirect(_mail_url(folder, get_active_account_id(user, session), search))
 
         elif islem == "hesap_degistir":
             account_id = request.form.get("account_id", "").strip()
@@ -388,5 +391,5 @@ def mail_page():
         calendar_reminders=calendar_reminders,
         file_library=file_library,
         translate_languages=supported_languages(),
-        ui_version="gmail-v58",
+        ui_version="gmail-v59",
     )
