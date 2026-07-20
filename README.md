@@ -13,6 +13,20 @@ AI destekli mail asistanı. Gmail için **Google OAuth 2.0 + Gmail API**, diğer
 
 ## Kurulum (yerel)
 
+### Masaüstü uygulaması (Windows / Linux)
+
+```bat
+desktop\start.bat
+```
+
+veya:
+
+```bash
+./desktop/start.sh
+```
+
+Ayrıntılar: [desktop/README.md](desktop/README.md) — Windows `.exe` derleme ve Microsoft Store notları dahil.
+
 ### 1. Bağımlılıklar
 
 ```bash

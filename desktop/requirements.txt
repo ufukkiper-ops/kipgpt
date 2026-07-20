@@ -1,0 +1,4 @@
+# KipGPT masaüstü (pywebview)
+pywebview>=5.3,<6
+# Windows paketleme (isteğe bağlı)
+pyinstaller>=6.3,<7

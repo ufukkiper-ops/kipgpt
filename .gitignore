@@ -1,4 +1,5 @@
 .env
+.venv/
 google_client_secret.json
 users.json
 data.json
@@ -13,3 +14,9 @@ android/app/build/
 android/local.properties
 android/.idea/
 android/.kotlin/
+desktop/dist/
+desktop/build/
+dist/
+build/
+*.spec.bak
+
