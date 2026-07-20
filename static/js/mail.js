@@ -1559,7 +1559,8 @@
             if (!form) return;
             var email = btn.getAttribute("data-confirm-email") || "bu mail hesabını";
             var ok = window.confirm(
-                email + " hesabını silmek istediğinize emin misiniz?\n\nBu işlem geri alınamaz."
+                email + " hesabını silmek istediğinize emin misiniz?\n\n" +
+                "Son hesap olsa bile silinir. Bu işlem geri alınamaz."
             );
             if (!ok) return;
             form.submit();

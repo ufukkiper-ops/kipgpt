@@ -609,7 +609,12 @@ def api_delete_mail_account(user_id, account_id):
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
 
-    return jsonify({"active_account_id": next_id})
+    if next_id:
+        set_active_account(user, {}, next_id)
+    else:
+        set_active_account(user, {}, "")
+
+    return jsonify({"active_account_id": next_id or None, "removed": True})
 
 
 @mobile_api_bp.route("/mail", methods=["GET"])

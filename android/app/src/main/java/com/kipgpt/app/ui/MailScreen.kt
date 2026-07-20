@@ -370,10 +370,8 @@ fun MailScreen(
                                 )
                             },
                             trailingContent = {
-                                if (mailAccounts.size > 1) {
-                                    IconButton(onClick = { deleteAccount(item.id) }) {
-                                        Icon(Icons.Default.Delete, contentDescription = "Hesabı kaldır")
-                                    }
+                                IconButton(onClick = { deleteAccount(item.id) }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Hesabı kaldır")
                                 }
                             },
                             modifier = Modifier.clickable { switchAccount(item.id) },
