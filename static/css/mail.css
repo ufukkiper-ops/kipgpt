@@ -771,11 +771,19 @@ body.dialog-open .account-remove-form {
     overflow-y: auto;
 }
 
+.account-item-wrap {
+    position: relative;
+}
+
+.account-item-wrap.is-active .account-item {
+    background: var(--gmail-active-bg);
+}
+
 .account-item {
     display: flex;
     flex-direction: column;
     gap: 2px;
-    padding: 8px 10px;
+    padding: 8px 32px 8px 10px;
     border-radius: 12px;
     text-decoration: none;
     color: var(--gmail-text);
@@ -805,6 +813,44 @@ body.dialog-open .account-remove-form {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.account-item-remove-form {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    margin: 0;
+    z-index: 2;
+}
+
+.account-item-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: #5f6368;
+    cursor: pointer;
+    opacity: 0.55;
+    transition: opacity .15s, background .15s, color .15s;
+}
+
+.account-item-wrap:hover .account-item-remove,
+.account-item-wrap.is-active .account-item-remove {
+    opacity: 1;
+}
+
+.account-item-remove:hover {
+    background: #fce8e6;
+    color: #c5221f;
+}
+
+.account-item-remove .material-icons-outlined {
+    font-size: 16px;
 }
 
 .account-empty {
@@ -2258,14 +2304,20 @@ body.dialog-open .account-remove-form {
 }
 
 .action-btn-ai {
-    border-color: #aecbfa;
-    background: #e8f0fe;
-    color: #1a73e8;
-    font-weight: 500;
+    border-color: #1a73e8;
+    background: #1a73e8;
+    color: #ffffff;
+    font-weight: 700;
 }
 
 .action-btn-ai:hover {
-    background: #d2e3fc;
+    background: #1557b0;
+    border-color: #1557b0;
+    color: #ffffff;
+}
+
+.action-btn-ai .material-icons-outlined {
+    color: #ffffff;
 }
 
 .restore-btn {
@@ -3282,6 +3334,10 @@ body.sidebar-open {
         position: sticky;
         bottom: 0;
         z-index: 4;
+        max-height: min(52vh, 480px);
+        overflow-x: hidden;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
         box-shadow: 0 -6px 18px rgba(15, 23, 42, 0.08);
         padding-bottom: env(safe-area-inset-bottom);
         background: #fff;

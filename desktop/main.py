@@ -105,8 +105,11 @@ def _resolve_target_url(settings: dict) -> tuple[str, bool]:
 
 def _icon_path() -> str | None:
     candidates = [
+        ROOT / "static" / "img" / "kipgpt-app.ico",
+        ROOT / "desktop" / "kipgpt.ico",
         ROOT / "static" / "img" / "kipgpt-icon.png",
         ROOT / "static" / "icon.png",
+        Path(sys.executable).resolve().parent / "kipgpt.ico",
         Path(sys.executable).resolve().parent / "kipgpt-icon.png",
     ]
     for path in candidates:

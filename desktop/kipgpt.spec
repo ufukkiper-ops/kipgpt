@@ -11,7 +11,11 @@ datas = [
     (str(ROOT / "templates"), "templates"),
     (str(ROOT / "static"), "static"),
     (str(ROOT / ".env.example"), "."),
+    (str(ROOT / "desktop" / "kipgpt.ico"), ".")
+    if (ROOT / "desktop" / "kipgpt.ico").exists()
+    else None,
 ]
+datas = [d for d in datas if d]
 
 hiddenimports = [
     "dotenv",
@@ -79,9 +83,17 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=str(ROOT / "static" / "img" / "kipgpt-icon.png")
-    if (ROOT / "static" / "img" / "kipgpt-icon.png").exists()
-    else None,
+    icon=str(ROOT / "static" / "img" / "kipgpt-app.ico")
+    if (ROOT / "static" / "img" / "kipgpt-app.ico").exists()
+    else (
+        str(ROOT / "desktop" / "kipgpt.ico")
+        if (ROOT / "desktop" / "kipgpt.ico").exists()
+        else (
+            str(ROOT / "static" / "img" / "kipgpt-icon.png")
+            if (ROOT / "static" / "img" / "kipgpt-icon.png").exists()
+            else None
+        )
+    ),
 )
 
 coll = COLLECT(

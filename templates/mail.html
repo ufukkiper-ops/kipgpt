@@ -70,24 +70,32 @@
 
                 <div class="account-list">
                     {% for acc in mail_accounts %}
-                    <a
-                        href="/mail?folder={{ folder }}&account={{ acc.id }}{% if search %}&search={{ search }}{% endif %}"
-                        class="account-item{% if acc.id == active_account_id %} active{% endif %}">
-                        <span class="account-item-email">{{ acc.label }}</span>
-                        <span class="account-item-addr">{{ acc.email }}</span>
-                    </a>
+                    <div class="account-item-wrap{% if acc.id == active_account_id %} is-active{% endif %}">
+                        <a
+                            href="/mail?folder={{ folder }}&account={{ acc.id }}{% if search %}&search={{ search }}{% endif %}"
+                            class="account-item{% if acc.id == active_account_id %} active{% endif %}">
+                            <span class="account-item-email">{{ acc.label }}</span>
+                            <span class="account-item-addr">{{ acc.email }}</span>
+                        </a>
+                        {% if mail_accounts|length > 1 %}
+                        <form method="post" class="account-item-remove-form" action="/mail?folder={{ folder }}{% if active_account_id %}&account={{ active_account_id }}{% endif %}">
+                            <input type="hidden" name="islem" value="hesap_sil">
+                            <input type="hidden" name="account_id" value="{{ acc.id }}">
+                            <button
+                                type="submit"
+                                class="account-item-remove"
+                                title="Hesabı kaldır"
+                                aria-label="{{ acc.email }} hesabını kaldır"
+                                data-confirm-email="{{ acc.email }}">
+                                <span class="material-icons-outlined" aria-hidden="true">close</span>
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
                     {% else %}
                     <p class="account-empty">Henüz hesap yok</p>
                     {% endfor %}
                 </div>
-
-                {% if active_account and mail_accounts|length > 1 %}
-                <form method="post" class="account-remove-form" onsubmit="return confirm('Bu mail hesabını silmek istediğinize emin misiniz?');">
-                    <input type="hidden" name="islem" value="hesap_sil">
-                    <input type="hidden" name="account_id" value="{{ active_account_id }}">
-                    <button type="submit" class="account-remove-btn">Aktif hesabı kaldır</button>
-                </form>
-                {% endif %}
             </div>
 
             <button class="compose-btn" type="button" id="compose-btn">

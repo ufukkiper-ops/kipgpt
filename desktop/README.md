@@ -43,6 +43,8 @@ desktop\build_windows.bat
 
 > Edge WebView2 Windows 10/11’de genelde hazırdır. Yoksa [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/) kurun.
 
+Uygulama simgesi: `desktop/kipgpt.ico` (görev çubuğu / .exe ikonu).
+
 ## Ortam değişkenleri
 
 | Değişken | Açıklama |

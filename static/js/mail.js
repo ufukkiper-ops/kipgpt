@@ -1551,6 +1551,19 @@
         });
     }
 
+    document.querySelectorAll(".account-item-remove").forEach(function (btn) {
+        btn.addEventListener("click", function (e) {
+            var email = btn.getAttribute("data-confirm-email") || "bu mail hesabını";
+            var ok = window.confirm(
+                email + " hesabını silmek istediğinize emin misiniz?\n\nBu işlem geri alınamaz."
+            );
+            if (!ok) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        });
+    });
+
     const accountPasswordForm = document.getElementById("account-password-form");
     const accountSubmitBtn = document.getElementById("account-submit");
     if (accountPasswordForm && accountSubmitBtn) {

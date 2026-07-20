@@ -53,7 +53,7 @@ def _mail_url(folder="inbox", account_id=None, search=""):
 @mail_bp.route("/mail-version")
 def mail_version():
     return {
-        "ui_version": "gmail-v57",
+        "ui_version": "gmail-v58",
         "layout": "gmail-sidebar",
         "message": "Çoklu mail hesabı desteği",
     }
