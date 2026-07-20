@@ -388,5 +388,5 @@ def mail_page():
         calendar_reminders=calendar_reminders,
         file_library=file_library,
         translate_languages=supported_languages(),
-        ui_version="gmail-v57",
+        ui_version="gmail-v58",
     )
