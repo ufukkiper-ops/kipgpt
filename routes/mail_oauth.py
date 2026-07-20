@@ -51,6 +51,11 @@ def _fail(message, mobile=False):
 
 @mail_oauth_bp.route("/mail/oauth/<provider>/start")
 def oauth_start(provider):
+    from services.oauth_mail import OAUTH_LOGIN_DISABLED_MESSAGE, is_oauth_login_enabled
+
+    if not is_oauth_login_enabled():
+        return _fail(OAUTH_LOGIN_DISABLED_MESSAGE)
+
     provider = (provider or "").strip().lower()
     if provider not in OAUTH_PROVIDERS:
         return _fail("Geçersiz sağlayıcı.")

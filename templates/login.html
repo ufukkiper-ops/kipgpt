@@ -17,37 +17,6 @@
 <div class="error">{{ error }}</div>
 {% endif %}
 
-{% if google_enabled %}
-<label class="auth-option">
-    <input type="checkbox" id="google-login-gmail">
-    <span>Girişte Gmail’i de bağla / yenile</span>
-</label>
-<a id="google-login-btn"
-   href="{{ url_for('auth.google_auth_start', action='login') }}"
-   class="btn-google btn-google-primary"
-   data-url-plain="{{ url_for('auth.google_auth_start', action='login') }}"
-   data-url-mail="{{ url_for('auth.google_auth_start', action='login', with_mail='1') }}">
-    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" width="20" height="20">
-    <span id="google-login-label">Google ile Giriş Yap</span>
-</a>
-<div class="auth-divider"><span>veya</span></div>
-<script>
-(function () {
-    var box = document.getElementById("google-login-gmail");
-    var btn = document.getElementById("google-login-btn");
-    var label = document.getElementById("google-login-label");
-    if (!box || !btn) return;
-    function sync() {
-        var on = box.checked;
-        btn.href = on ? btn.getAttribute("data-url-mail") : btn.getAttribute("data-url-plain");
-        if (label) label.textContent = on ? "Google ile giriş + Gmail" : "Google ile Giriş Yap";
-    }
-    box.addEventListener("change", sync);
-    sync();
-})();
-</script>
-{% endif %}
-
 <form method="post" class="auth-form">
 
 <input type="text" name="email" placeholder="E-posta veya kullanıcı adı" required autocomplete="username">

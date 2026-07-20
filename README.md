@@ -4,12 +4,11 @@ AI destekli mail asistanı. Gmail için **Google OAuth 2.0 + Gmail API**, diğer
 
 ## Özellikler
 
-- **Gmail Hesabı Ekle** → Google OAuth ekranı
-- Birden fazla Gmail (ve Outlook/Yahoo) hesabı
-- Access / refresh token şifreli saklama; süre dolunca otomatik yenileme
-- Gmail API: gelen kutusu, detay, gönder, taslak, yıldızlı, okunmamış, spam, çöp, arama
+- Birden fazla Gmail, Outlook/Yahoo ve özel IMAP hesabı (uygulama şifresi ile)
+- Access / refresh token şifreli saklama (önceden OAuth ile bağlanmış hesaplar için)
+- Gmail API / IMAP: gelen kutusu, detay, gönder, taslak, yıldızlı, okunmamış, spam, çöp, arama
 - AI özet ve cevap önerileri (OpenAI)
-- Çıkışta Google token revoke + kayıtların temizlenmesi
+- **Not:** Gmail / Outlook / Yahoo otomatik (OAuth) girişi varsayılan olarak kapalıdır. Hesap ekleme e-posta + uygulama şifresi ile yapılır.
 
 ## Kurulum (yerel)
 
@@ -73,7 +72,9 @@ python app.py
 # veya start.bat
 ```
 
-Aç: `http://127.0.0.1:5001/login` → Mail → **Gmail Hesabı Ekle**
+Aç: `http://127.0.0.1:5001/login` → Mail → **Hesap Ekle** (e-posta + uygulama şifresi)
+
+> Gmail / Outlook / Yahoo OAuth (şifresiz) giriş kapalıdır. Yeniden açmak için `OAUTH_LOGIN_ENABLED=1` ortam değişkenini ekleyin.
 
 ## Render deploy
 

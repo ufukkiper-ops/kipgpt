@@ -1,6 +1,9 @@
 """Mail hesaplarını OAuth ile bağlama (Gmail / Outlook / Yahoo).
 
 OAuth state dosyaya yazılır — Render'da birden fazla gunicorn worker ile uyumlu.
+
+Gmail / Outlook / Yahoo şifresiz (OAuth) giriş ve hesap bağlama varsayılan olarak kapalıdır.
+Mevcut OAuth hesaplarının token yenilemesi çalışmaya devam eder.
 """
 
 from __future__ import annotations
@@ -17,6 +20,19 @@ from services.mail_accounts import (
     set_active_account,
 )
 from users import find_user_by_id, load_users, save_users
+
+# Gmail / Outlook / Yahoo OAuth ile giriş ve yeni hesap bağlama kapalı.
+# Açmak için ortam değişkeni: OAUTH_LOGIN_ENABLED=1
+OAUTH_LOGIN_DISABLED_MESSAGE = (
+    "Gmail, Outlook ve Yahoo otomatik (OAuth) girişi kapatıldı. "
+    "E-posta ve uygulama şifresi ile ekleyin."
+)
+
+
+def is_oauth_login_enabled() -> bool:
+    raw = (os.getenv("OAUTH_LOGIN_ENABLED") or "0").strip().lower()
+    return raw in {"1", "true", "yes", "on"}
+
 
 OAUTH_PROVIDERS = {
     "google": {
@@ -194,6 +210,29 @@ def clear_user_oauth_tokens(user_id: str, *, revoke: bool = True) -> int:
 
 
 def oauth_provider_status():
+    enabled = is_oauth_login_enabled()
+    if not enabled:
+        return {
+            "google": {
+                "configured": False,
+                "enabled": False,
+                "label": "Gmail",
+                "hint": "OAuth kapalı; uygulama şifresi ile ekleyin.",
+            },
+            "microsoft": {
+                "configured": False,
+                "enabled": False,
+                "label": "Outlook",
+                "hint": "OAuth kapalı; uygulama şifresi ile ekleyin.",
+            },
+            "yahoo": {
+                "configured": False,
+                "enabled": False,
+                "label": "Yahoo",
+                "hint": "OAuth kapalı; uygulama şifresi ile ekleyin.",
+            },
+        }
+
     from services.google_auth import is_google_configured
     from services.microsoft_auth import is_microsoft_configured
     from services.yahoo_auth import is_yahoo_configured
@@ -201,16 +240,19 @@ def oauth_provider_status():
     return {
         "google": {
             "configured": is_google_configured(),
+            "enabled": True,
             "label": "Gmail",
             "hint": "Google hesabınızla şifresiz bağlanır; Gmail API ile senkronize olur.",
         },
         "microsoft": {
             "configured": is_microsoft_configured(),
+            "enabled": True,
             "label": "Outlook",
             "hint": "Microsoft hesabınızla şifresiz bağlanır (Outlook / Hotmail / Live).",
         },
         "yahoo": {
             "configured": is_yahoo_configured(),
+            "enabled": True,
             "label": "Yahoo",
             "hint": "Yahoo hesabınızla şifresiz bağlanır ve otomatik senkronize olur.",
         },

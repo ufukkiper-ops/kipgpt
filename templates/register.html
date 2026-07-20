@@ -17,41 +17,17 @@
 <div class="error">{{ error }}</div>
 {% endif %}
 
-{% if google_enabled %}
-<label class="auth-option">
-    <input type="checkbox" id="google-link-gmail">
-    <span>Gmail’i de bağla (isteğe bağlı)</span>
-</label>
-<a id="google-register-btn"
-   href="{{ url_for('auth.google_auth_start', action='register') }}"
-   class="btn-google btn-google-primary"
-   data-url-plain="{{ url_for('auth.google_auth_start', action='register') }}"
-   data-url-mail="{{ url_for('auth.google_auth_start', action='register', with_mail='1') }}">
-    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" width="20" height="20">
-    <span id="google-register-label">Google ile kayıt ol</span>
-</a>
-<p class="register-lead">Kutuyu kaldırırsanız yalnızca KipGPT hesabı oluşur; Gmail’i sonra Mail’den ekleyebilirsiniz.</p>
-<div class="auth-divider"><span>veya e-posta ile</span></div>
-{% endif %}
-
 <form method="post" class="auth-form">
 
 <input type="email" name="email" placeholder="E-posta adresiniz" required>
 <input type="password" name="password" placeholder="KipGPT giriş şifreniz" required>
 <input type="password" name="password2" placeholder="Şifre tekrar" required>
 
-{% if google_enabled %}
-<label class="auth-option">
-    <input type="checkbox" name="link_gmail" value="1">
-    <span>Kayıt sonrası Gmail’i bağla</span>
-</label>
-{% endif %}
-
 <button class="btn btn-blue btn-block" type="submit">Kayıt Ol</button>
 
 </form>
 
-<p class="register-note">Mail hesabını isterseniz kayıt sırasında veya sonra Mail sayfasından ekleyebilirsiniz.</p>
+<p class="register-note">Mail hesabını kayıt sonrası Mail sayfasından e-posta ve uygulama şifresi ile ekleyebilirsiniz.</p>
 
 <p class="auth-footer-link">
 <a href="{{ url_for('auth.login') }}">Zaten hesabın var mı? Giriş Yap</a>
@@ -59,23 +35,5 @@
 
 </div>
 </div>
-
-{% if google_enabled %}
-<script>
-(function () {
-    var box = document.getElementById("google-link-gmail");
-    var btn = document.getElementById("google-register-btn");
-    var label = document.getElementById("google-register-label");
-    if (!box || !btn) return;
-    function sync() {
-        var on = box.checked;
-        btn.href = on ? btn.getAttribute("data-url-mail") : btn.getAttribute("data-url-plain");
-        if (label) label.textContent = on ? "Google ile kayıt ol + Gmail" : "Google ile kayıt ol";
-    }
-    box.addEventListener("change", sync);
-    sync();
-})();
-</script>
-{% endif %}
 
 {% endblock %}

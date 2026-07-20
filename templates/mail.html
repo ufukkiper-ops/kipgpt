@@ -746,7 +746,7 @@
                 <span class="material-icons-outlined mail-dialog-icon">person_add</span>
                 <div>
                     <h2 class="mail-dialog-title" id="account-title">Mail Hesabı Ekle</h2>
-                    <p class="mail-dialog-subtitle">Gmail OAuth ile bağlayın veya uygulama şifresi ile ekleyin</p>
+                    <p class="mail-dialog-subtitle">E-posta ve uygulama şifresi ile ekleyin</p>
                 </div>
             </div>
             <button class="icon-btn mail-dialog-close" type="button" id="account-close" aria-label="Kapat">
@@ -755,48 +755,6 @@
         </div>
 
         <div class="mail-dialog-body">
-            {% set oauth = oauth_providers|default({}, true) %}
-            {% set google_oauth_ok = (oauth.google.configured if oauth.google is defined else false) %}
-            {% set microsoft_oauth_ok = (oauth.microsoft.configured if oauth.microsoft is defined else false) %}
-            {% set yahoo_oauth_ok = (oauth.yahoo.configured if oauth.yahoo is defined else false) %}
-            <div class="oauth-connect-block">
-                <p class="dialog-label">Şifresiz bağla (önerilen)</p>
-                <div class="oauth-connect-grid">
-                    <a class="oauth-connect-btn oauth-google{% if not google_oauth_ok %} is-warn{% endif %}"
-                       href="/mail/oauth/google/start"
-                       data-oauth-provider="google"
-                       data-oauth-configured="{{ '1' if google_oauth_ok else '0' }}"
-                       title="Google OAuth ile Gmail bağla">
-                        <span class="material-icons-outlined">mail</span>
-                        Gmail ile senkronize et
-                    </a>
-                    <a class="oauth-connect-btn oauth-microsoft{% if not microsoft_oauth_ok %} is-warn{% endif %}"
-                       href="/mail/oauth/microsoft/start"
-                       data-oauth-provider="microsoft"
-                       data-oauth-configured="{{ '1' if microsoft_oauth_ok else '0' }}">
-                        <span class="material-icons-outlined">windows</span>
-                        Outlook
-                    </a>
-                    <a class="oauth-connect-btn oauth-yahoo{% if not yahoo_oauth_ok %} is-warn{% endif %}"
-                       href="/mail/oauth/yahoo/start"
-                       data-oauth-provider="yahoo"
-                       data-oauth-configured="{{ '1' if yahoo_oauth_ok else '0' }}">
-                        <span class="material-icons-outlined">alternate_email</span>
-                        Yahoo
-                    </a>
-                </div>
-                <p class="dialog-hint" id="oauth-connect-hint">
-                    {% if google_oauth_ok %}
-                    Google hesabınızla onay verin — uygulama şifresi gerekmez, mailler senkronize olur.
-                    {% else %}
-                    <strong>Gmail Hesabı Ekle</strong> ile şifresiz senkron açılır
-                    (bir kez Google Cloud OAuth anahtarı gerekir; e-posta/şifre değil).
-                    {% endif %}
-                </p>
-            </div>
-
-            <div class="oauth-or-divider"><span>gelişmiş: şifre / IMAP</span></div>
-
             <form method="post" action="/mail?folder={{ folder }}{% if active_account_id %}&account={{ active_account_id }}{% endif %}" class="account-form" id="account-password-form">
                 <input type="hidden" name="islem" value="hesap_ekle">
                 {% if active_account_id %}

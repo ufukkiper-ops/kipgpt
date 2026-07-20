@@ -43,7 +43,9 @@ def register():
         return redirect(url_for("mail.mail_page"))
 
     error = session.pop("auth_error", "")
-    google_enabled = is_google_configured()
+    from services.oauth_mail import is_oauth_login_enabled
+
+    google_enabled = is_oauth_login_enabled() and is_google_configured()
 
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
@@ -136,6 +138,8 @@ def google_setup():
 
 @auth_bp.route("/auth/google")
 def google_auth_start():
+    from services.oauth_mail import OAUTH_LOGIN_DISABLED_MESSAGE, is_oauth_login_enabled
+
     action = request.args.get("action", "register")
     with_mail = request.args.get("with_mail") == "1" or action in {
         "link_mail",
@@ -146,6 +150,11 @@ def google_auth_start():
         action = "register"
     elif action == "login_mail":
         action = "login"
+
+    if not is_oauth_login_enabled():
+        session["auth_error"] = OAUTH_LOGIN_DISABLED_MESSAGE
+        target = url_for("auth.login") if action == "login" else url_for("auth.register")
+        return redirect(target)
 
     if not is_google_configured():
         session["auth_error"] = (
@@ -305,7 +314,9 @@ def login():
         return redirect(url_for("mail.mail_page"))
 
     error = session.pop("auth_error", "")
-    google_enabled = is_google_configured()
+    from services.oauth_mail import is_oauth_login_enabled
+
+    google_enabled = is_oauth_login_enabled() and is_google_configured()
 
     if request.method == "POST":
         identifier = request.form.get("email", "").strip().lower()

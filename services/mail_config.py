@@ -7,7 +7,7 @@ MAIL_PRESETS = {
         "imap_port": 993,
         "smtp_server": "smtp.gmail.com",
         "smtp_port": 587,
-        "hint": "Google ile Bağla önerilir (şifresiz). Alternatif: Uygulama Şifresi.",
+        "hint": "Gmail için Google Hesabı → Güvenlik → Uygulama Şifresi kullanın.",
         "oauth_provider": "google",
     },
     "outlook": {
@@ -16,7 +16,7 @@ MAIL_PRESETS = {
         "imap_port": 993,
         "smtp_server": "smtp.office365.com",
         "smtp_port": 587,
-        "hint": "Microsoft ile Bağla önerilir (şifresiz). Alternatif: uygulama şifresi.",
+        "hint": "Outlook için Microsoft uygulama şifresi veya hesap şifrenizi kullanın.",
         "oauth_provider": "microsoft",
     },
     "yahoo": {
@@ -25,7 +25,7 @@ MAIL_PRESETS = {
         "imap_port": 993,
         "smtp_server": "smtp.mail.yahoo.com",
         "smtp_port": 587,
-        "hint": "Yahoo ile Bağla önerilir (şifresiz). Alternatif: uygulama şifresi.",
+        "hint": "Yahoo için hesap ayarlarından uygulama şifresi oluşturun.",
         "oauth_provider": "yahoo",
     },
     "custom": {

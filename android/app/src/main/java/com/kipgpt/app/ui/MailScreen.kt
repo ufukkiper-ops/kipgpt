@@ -1850,10 +1850,6 @@ private fun AddMailAccountDialog(
     val providerLabel = selectedPreset?.label ?: provider.value
     val providerHint = selectedPreset?.hint ?: ""
     val isCustom = provider.value == "custom"
-    val googleReady = oauthProviders["google"]?.configured == true
-    val microsoftReady = oauthProviders["microsoft"]?.configured == true
-    val yahooReady = oauthProviders["yahoo"]?.configured == true
-
     LaunchedEffect(provider.value, selectedPreset) {
         if (!isCustom && selectedPreset != null) {
             imapServer.value = selectedPreset.imap_server
@@ -1874,37 +1870,9 @@ private fun AddMailAccountDialog(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Text(
-                    "Şifresiz bağla (önerilen)",
+                    "E-posta ve uygulama şifresi ile ekleyin",
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(
-                        onClick = { onOAuth("google") },
-                        enabled = !saving && googleReady,
-                        modifier = Modifier.weight(1f),
-                    ) { Text("Gmail Hesabı Ekle") }
-                    OutlinedButton(
-                        onClick = { onOAuth("microsoft") },
-                        enabled = !saving && microsoftReady,
-                        modifier = Modifier.weight(1f),
-                    ) { Text("Outlook") }
-                    OutlinedButton(
-                        onClick = { onOAuth("yahoo") },
-                        enabled = !saving && yahooReady,
-                        modifier = Modifier.weight(1f),
-                    ) { Text("Yahoo") }
-                }
-                Text(
-                    "Tarayıcıda giriş yapın; ardından uygulamada Yenile ile mailleri çekin.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                HorizontalDivider()
-                Text(
-                    "veya şifre ile ekle",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 OutlinedTextField(
                     value = email.value,

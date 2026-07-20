@@ -1541,25 +1541,6 @@
         });
     }
 
-    // OAuth kurulu degilse: sifre istemeden kurulum / Google Cloud adimlarina git
-    document.querySelectorAll(".oauth-connect-btn").forEach(function (btn) {
-        btn.addEventListener("click", function (e) {
-            if (btn.getAttribute("data-oauth-configured") !== "0") {
-                return;
-            }
-            e.preventDefault();
-            var name = (btn.getAttribute("data-oauth-provider") || "").toLowerCase();
-            if (name === "google") {
-                window.location.href = "/google-ayar?next=link_mail";
-                return;
-            }
-            window.alert(
-                name.toUpperCase() + " şifresiz bağlantı henüz kurulmadı.\n" +
-                "Gerekirse alttan IMAP / uygulama şifresi ile ekleyebilirsiniz."
-            );
-        });
-    });
-
     const accountPasswordForm = document.getElementById("account-password-form");
     const accountSubmitBtn = document.getElementById("account-submit");
     if (accountPasswordForm && accountSubmitBtn) {
