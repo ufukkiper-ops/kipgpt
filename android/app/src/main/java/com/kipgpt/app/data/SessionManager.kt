@@ -25,7 +25,7 @@ class SessionManager(private val context: Context) {
          * Tunnel yeniden açılırsa bu URL değişebilir; tunnel/current_url.txt ile güncelle.
          */
         const val PUBLIC_TUNNEL_BASE_URL =
-            "https://affiliate-totally-brian-observations.trycloudflare.com/api/v1/"
+            "https://apart-occur-glad-leslie.trycloudflare.com/api/v1/"
 
         val DEFAULT_BASE_URL: String = PUBLIC_TUNNEL_BASE_URL
 
