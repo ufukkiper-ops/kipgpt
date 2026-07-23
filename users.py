@@ -10,8 +10,8 @@ DEV_QUICK_PASSWORD = "q"
 PASSWORD_SPECIAL_CHARS = r"%&/+\^'\"!@#\$\*\(\)_\-=\{\}\[\]\|:;<>\?,\.~\\`"
 PASSWORD_SPECIAL_RE = re.compile(f"[{PASSWORD_SPECIAL_CHARS}]")
 PASSWORD_RULES_HINT = (
-    "Şifre en az 6 karakter olmalı; en az bir büyük harf, bir küçük harf "
-    "ve bir özel karakter içermeli (ör. % & / + ^ ' ! @ #)."
+    "Şifre en az 6 karakter olmalı; en az bir büyük harf, bir küçük harf, "
+    "bir sayı ve bir özel karakter içermeli (ör. % & / + ^ ' ! @ #)."
 )
 
 
@@ -24,6 +24,8 @@ def validate_password_strength(password):
         return "Şifrede en az bir küçük harf (a-z) olmalı."
     if not re.search(r"[A-Z]", value):
         return "Şifrede en az bir büyük harf (A-Z) olmalı."
+    if not re.search(r"[0-9]", value):
+        return "Şifrede en az bir sayı (0-9) olmalı."
     if not PASSWORD_SPECIAL_RE.search(value):
         return (
             "Şifrede en az bir özel karakter olmalı "

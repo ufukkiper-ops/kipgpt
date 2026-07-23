@@ -43,6 +43,7 @@
     <li>En az <strong>6 karakter</strong></li>
     <li>En az bir <strong>büyük harf</strong> (A–Z)</li>
     <li>En az bir <strong>küçük harf</strong> (a–z)</li>
+    <li>En az bir <strong>sayı</strong> (0–9)</li>
     <li>En az bir <strong>özel karakter</strong> (ör. <code>% &amp; / + ^ ' ! @ #</code>)</li>
 </ul>
 
@@ -71,6 +72,7 @@
         if (p.length < 6) msg = "Şifre en az 6 karakter olmalı.";
         else if (!/[a-z]/.test(p)) msg = "Şifrede en az bir küçük harf (a-z) olmalı.";
         else if (!/[A-Z]/.test(p)) msg = "Şifrede en az bir büyük harf (A-Z) olmalı.";
+        else if (!/[0-9]/.test(p)) msg = "Şifrede en az bir sayı (0-9) olmalı.";
         else if (!special.test(p)) msg = "Şifrede en az bir özel karakter olmalı (ör. % & / + ^ ' ! @ #).";
         else if (p !== p2) msg = "Şifreler eşleşmiyor.";
         if (msg) {
