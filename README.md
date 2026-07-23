@@ -77,6 +77,9 @@ Aç: `http://127.0.0.1:5001/login` → Mail → **Hesap Ekle** (e-posta + uygula
 
 Dışarıdan erişim ve Store notları: [tunnel/SETUP.txt](tunnel/SETUP.txt)
 
+Geliştirme PC ↔ sunucu PC: [GELISTIRME-SUNUCU.txt](GELISTIRME-SUNUCU.txt)  
+Sunucu güncelle: `guncelle.bat` · Geliştirici gönder: `gonder.bat`
+
 > Gmail / Outlook / Yahoo OAuth (şifresiz) giriş kapalıdır. Yeniden açmak için `OAUTH_LOGIN_ENABLED=1` ortam değişkenini ekleyin.
 
 ## Render deploy
