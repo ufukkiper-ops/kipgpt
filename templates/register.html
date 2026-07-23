@@ -44,7 +44,7 @@
     <li>En az bir <strong>büyük harf</strong> (A–Z)</li>
     <li>En az bir <strong>küçük harf</strong> (a–z)</li>
     <li>En az bir <strong>sayı</strong> (0–9)</li>
-    <li>En az bir <strong>özel karakter</strong> (ör. <code>% &amp; / + ^ ' ! @ #</code>)</li>
+    <li>En az bir <strong>özel karakter</strong> (harf/rakam dışı herhangi bir işaret: <code>! @ # $ % &amp; / + ^ ' " * ( ) - _ = [ ] { } | ; : &lt; &gt; , . ? ~ \ `</code> vb.)</li>
 </ul>
 
 <button class="btn btn-blue btn-block" type="submit">Kayıt Ol</button>
@@ -67,13 +67,12 @@
     form.addEventListener("submit", function (e) {
         var p = (document.getElementById("register-password") || {}).value || "";
         var p2 = (document.getElementById("register-password2") || {}).value || "";
-        var special = /[%&/+\^'"!@#\$\*\(\)_\-={}\[\]\|:;<>\?,\.~\\`]/;
         var msg = "";
         if (p.length < 6) msg = "Şifre en az 6 karakter olmalı.";
         else if (!/[a-z]/.test(p)) msg = "Şifrede en az bir küçük harf (a-z) olmalı.";
         else if (!/[A-Z]/.test(p)) msg = "Şifrede en az bir büyük harf (A-Z) olmalı.";
         else if (!/[0-9]/.test(p)) msg = "Şifrede en az bir sayı (0-9) olmalı.";
-        else if (!special.test(p)) msg = "Şifrede en az bir özel karakter olmalı (ör. % & / + ^ ' ! @ #).";
+        else if (!/[^A-Za-z0-9]/.test(p)) msg = "Şifrede en az bir özel karakter olmalı (harf/rakam dışı herhangi bir işaret).";
         else if (p !== p2) msg = "Şifreler eşleşmiyor.";
         if (msg) {
             e.preventDefault();

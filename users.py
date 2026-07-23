@@ -6,12 +6,10 @@ from services.data_paths import ensure_data_dir, users_file_path
 DEV_QUICK_USERNAME = "q"
 DEV_QUICK_PASSWORD = "q"
 
-# Kayıt şifresi: en az 6 karakter, büyük+küçük harf, özel karakter
-PASSWORD_SPECIAL_CHARS = r"%&/+\^'\"!@#\$\*\(\)_\-=\{\}\[\]\|:;<>\?,\.~\\`"
-PASSWORD_SPECIAL_RE = re.compile(f"[{PASSWORD_SPECIAL_CHARS}]")
+# Kayıt şifresi: en az 6 karakter, büyük+küçük harf, sayı, herhangi bir özel karakter
 PASSWORD_RULES_HINT = (
     "Şifre en az 6 karakter olmalı; en az bir büyük harf, bir küçük harf, "
-    "bir sayı ve bir özel karakter içermeli (ör. % & / + ^ ' ! @ #)."
+    "bir sayı ve bir özel karakter (harf/rakam dışı herhangi bir işaret) içermeli."
 )
 
 
@@ -26,10 +24,11 @@ def validate_password_strength(password):
         return "Şifrede en az bir büyük harf (A-Z) olmalı."
     if not re.search(r"[0-9]", value):
         return "Şifrede en az bir sayı (0-9) olmalı."
-    if not PASSWORD_SPECIAL_RE.search(value):
+    # Harf ve rakam dışındaki her işaret geçerli özel karakter sayılır
+    if not re.search(r"[^A-Za-z0-9]", value):
         return (
             "Şifrede en az bir özel karakter olmalı "
-            "(ör. % & / + ^ ' ! @ # $ *)."
+            "(ör. ! @ # $ % & / + ^ ' \" * ( ) - _ = [ ] { } | ; : < > , . ? ~ \\ `)."
         )
     return None
 

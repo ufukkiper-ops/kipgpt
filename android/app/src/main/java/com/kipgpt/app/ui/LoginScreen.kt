@@ -120,7 +120,7 @@ fun LoginScreen(
             if (isRegister.value) {
                 Spacer(Modifier = Modifier.height(8.dp))
                 Text(
-                    "En az 6 karakter; büyük + küçük harf, sayı ve özel karakter (ör. % & / + ^ ! @ #)",
+                    "En az 6 karakter; büyük + küçük harf, sayı ve herhangi bir özel işaret",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -190,9 +190,8 @@ private fun validateRegisterPassword(password: String): String? {
     if (!password.any { it.isLowerCase() }) return "Şifrede en az bir küçük harf (a-z) olmalı."
     if (!password.any { it.isUpperCase() }) return "Şifrede en az bir büyük harf (A-Z) olmalı."
     if (!password.any { it.isDigit() }) return "Şifrede en az bir sayı (0-9) olmalı."
-    val special = "%&/+^'\"!@#$*()_-={}[]|:;<>?,.~\\`"
-    if (password.none { it in special }) {
-        return "Şifrede en az bir özel karakter olmalı (ör. % & / + ^ ! @ #)."
+    if (password.all { it.isLetterOrDigit() }) {
+        return "Şifrede en az bir özel karakter olmalı (harf/rakam dışı herhangi bir işaret)."
     }
     return null
 }
