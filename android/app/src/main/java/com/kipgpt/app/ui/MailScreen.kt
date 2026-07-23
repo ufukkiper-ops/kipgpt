@@ -100,6 +100,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.kipgpt.app.data.AddMailAccountRequest
+import retrofit2.HttpException
 import com.kipgpt.app.data.ApiClient
 import com.kipgpt.app.data.AttachmentSaver
 import com.kipgpt.app.data.LibraryAttachmentRef
@@ -303,6 +304,11 @@ fun MailScreen(
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                         context.startActivity(intent)
                         snackbar.showSnackbar("Tarayıcıda giriş yapın; dönünce otomatik yenilenir")
+                    } catch (e: HttpException) {
+                        val msg = e.response()?.errorBody()?.string()?.let {
+                            it.substringAfter("\"error\":\"").substringBefore("\"")
+                        } ?: (e.message ?: "OAuth başlatılamadı")
+                        snackbar.showSnackbar(msg)
                     } catch (e: Exception) {
                         snackbar.showSnackbar(e.message ?: "OAuth başlatılamadı")
                     } finally {
@@ -1867,10 +1873,67 @@ private fun AddMailAccountDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
+                val googleReady = oauthProviders["google"]?.configured == true
+                val microsoftReady = oauthProviders["microsoft"]?.configured == true
+                val yahooReady = oauthProviders["yahoo"]?.configured == true
+                val anyOAuth = googleReady || microsoftReady || yahooReady
+
                 Text(
-                    "E-posta ve uygulama şifresi ile ekleyin",
+                    "Şifresiz bağla (önerilen)",
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
+                )
+                if (anyOAuth) {
+                    if (googleReady) {
+                        OutlinedButton(
+                            onClick = { onOAuth("google") },
+                            enabled = !saving,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("Gmail ile senkronize et")
+                        }
+                    }
+                    if (microsoftReady) {
+                        OutlinedButton(
+                            onClick = { onOAuth("microsoft") },
+                            enabled = !saving,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("Outlook ile bağla")
+                        }
+                    }
+                    if (yahooReady) {
+                        OutlinedButton(
+                            onClick = { onOAuth("yahoo") },
+                            enabled = !saving,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("Yahoo ile bağla")
+                        }
+                    }
+                    Text(
+                        "Google hesabınızı seçip izin verin — uygulama şifresi gerekmez.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    Text(
+                        "Şifresiz Gmail şu an sunucuda kapalı (OAUTH_LOGIN_ENABLED). " +
+                            "Şimdilik uygulama şifresi ile ekleyebilirsiniz.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+
+                Text(
+                    "veya şifre / IMAP ile ekle",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    "E-posta ve uygulama şifresi ile ekleyin",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 OutlinedTextField(
                     value = email.value,
