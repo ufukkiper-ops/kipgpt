@@ -1,14 +1,11 @@
 package com.kipgpt.app
 
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.kipgpt.app.data.SessionManager
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -38,30 +35,14 @@ class MainViewModel(
         SessionManager.DEFAULT_BASE_URL,
     )
 
-    var showGuestSettings by mutableStateOf(false)
-        private set
-
-    fun openGuestSettings() {
-        showGuestSettings = true
-    }
-
-    fun closeGuestSettings() {
-        showGuestSettings = false
-    }
-
     init {
         viewModelScope.launch {
-            sessionManager.applyLocalServerDefaultIfNeeded()
-            val url = sessionManager.baseUrlFlow.first()
-            if (SessionManager.isPlaceholderLanUrl(url)) {
-                showGuestSettings = true
-            }
+            sessionManager.applyBundledServerUrl()
         }
     }
 
     suspend fun logout() {
         sessionManager.clearToken()
-        showGuestSettings = false
     }
 
     class Factory(

@@ -93,19 +93,13 @@ class SessionManager(private val context: Context) {
         }
     }
 
-    /** Yerel LAN / eski Render / eski tünel yerine güncel PC tünel adresini varsayılan yap. */
-    suspend fun applyLocalServerDefaultIfNeeded() {
+    /** Uygulama içine gömülü tünel adresini her açılışta uygula (eski URL’leri sil). */
+    suspend fun applyBundledServerUrl() {
         context.dataStore.edit { prefs ->
-            val saved = prefs[KEY_BASE_URL]
-            val shouldReplace = saved.isNullOrBlank() ||
-                saved == RENDER_BASE_URL ||
-                saved.contains("10.252.49.1") ||
-                saved.contains(LAN_IP_PLACEHOLDER) ||
-                (saved.startsWith("http://") && saved.contains(":5001")) ||
-                (saved.contains("trycloudflare.com") && saved != PUBLIC_TUNNEL_BASE_URL)
-            if (shouldReplace) {
-                prefs[KEY_BASE_URL] = PUBLIC_TUNNEL_BASE_URL
-            }
+            prefs[KEY_BASE_URL] = PUBLIC_TUNNEL_BASE_URL
         }
     }
+
+    @Deprecated("Use applyBundledServerUrl", ReplaceWith("applyBundledServerUrl()"))
+    suspend fun applyLocalServerDefaultIfNeeded() = applyBundledServerUrl()
 }

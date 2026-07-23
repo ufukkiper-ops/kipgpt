@@ -45,7 +45,6 @@ fun LoginScreen(
     apiClient: ApiClient,
     sessionManager: SessionManager,
     onLoggedIn: () -> Unit,
-    onOpenSettings: () -> Unit,
 ) {
     val email = remember { mutableStateOf("") }
     val password = remember { mutableStateOf("") }
@@ -56,6 +55,7 @@ fun LoginScreen(
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
+        sessionManager.applyBundledServerUrl()
         sessionManager.baseUrlFlow.collect { url ->
             apiClient.updateBaseUrl(url)
         }
@@ -82,11 +82,7 @@ fun LoginScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            TextButton(onClick = onOpenSettings) {
-                Text("Sunucu ayarları (PC IP)")
-            }
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             OutlinedTextField(
                 value = email.value,

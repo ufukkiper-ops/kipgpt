@@ -1,9 +1,6 @@
 package com.kipgpt.app.ui
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,16 +8,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -38,7 +31,7 @@ import com.kipgpt.app.data.ApiClient
 import com.kipgpt.app.data.SessionManager
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     apiClient: ApiClient,
@@ -47,15 +40,9 @@ fun SettingsScreen(
     onLogout: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
-    val baseUrl = remember { mutableStateOf(SessionManager.DEFAULT_BASE_URL) }
     val userEmail = remember { mutableStateOf<String?>(null) }
-    val testing = remember { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-
-    LaunchedEffect(Unit) {
-        sessionManager.baseUrlFlow.collect { baseUrl.value = it }
-    }
 
     LaunchedEffect(apiClient) {
         if (onLogout != null) {
@@ -106,44 +93,9 @@ fun SettingsScreen(
                 Spacer(modifier.height(16.dp))
             }
 
-            Text("Sunucu adresi", style = MaterialTheme.typography.titleMedium)
-            Spacer(modifier.height(8.dp))
-            OutlinedTextField(
-                value = baseUrl.value,
-                onValueChange = { baseUrl.value = it },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("http://192.168.1.10:5001/api/v1/") },
-                singleLine = true,
-            )
-            Spacer(modifier.height(8.dp))
-
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(
-                    selected = baseUrl.value.contains("trycloudflare.com") ||
-                        baseUrl.value == SessionManager.PUBLIC_TUNNEL_BASE_URL,
-                    onClick = { baseUrl.value = SessionManager.PUBLIC_TUNNEL_BASE_URL },
-                    label = { Text("Dışarı (Tunnel)") },
-                )
-                FilterChip(
-                    selected = baseUrl.value.startsWith("http://") &&
-                        !baseUrl.value.contains("10.0.2.2") &&
-                        baseUrl.value.contains(":5001"),
-                    onClick = {
-                        baseUrl.value = SessionManager.lanBaseUrl(SessionManager.LAN_IP_PLACEHOLDER)
-                    },
-                    label = { Text("Bu PC (LAN)") },
-                )
-                FilterChip(
-                    selected = baseUrl.value == SessionManager.EMULATOR_BASE_URL,
-                    onClick = { baseUrl.value = SessionManager.EMULATOR_BASE_URL },
-                    label = { Text("Emülatör") },
-                )
-            }
-
-            Spacer(modifier.height(8.dp))
             Text(
-                "Ev Wi‑Fi: http://PC_IP:5001/api/v1/ (start.bat). Dışarıdan / Store: start_public.bat ile çıkan https://.... adresine /api/v1/ ekleyin. PC açık kalmalı.",
-                style = MaterialTheme.typography.bodySmall,
+                "Sunucu adresi uygulamaya gömülüdür; tünel değişince yeni APK ile güncellenir.",
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(modifier.height(8.dp))
@@ -152,58 +104,6 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Spacer(modifier.height(16.dp))
-
-            Button(
-                onClick = {
-                    scope.launch {
-                        sessionManager.saveBaseUrl(baseUrl.value)
-                        apiClient.updateBaseUrl(
-                            if (baseUrl.value.endsWith("/")) baseUrl.value else "${baseUrl.value}/",
-                        )
-                        snackbar.showSnackbar("Sunucu adresi kaydedildi")
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("Kaydet")
-            }
-
-            Spacer(modifier.height(8.dp))
-            OutlinedButton(
-                onClick = {
-                    scope.launch {
-                        testing.value = true
-                        try {
-                            val normalized = if (baseUrl.value.endsWith("/")) {
-                                baseUrl.value
-                            } else {
-                                "${baseUrl.value}/"
-                            }
-                            apiClient.updateBaseUrl(normalized)
-                            if (onLogout != null) {
-                                val me = apiClient.api.me()
-                                userEmail.value = me.email
-                                snackbar.showSnackbar("Bağlantı başarılı: ${me.email}")
-                            } else {
-                                snackbar.showSnackbar("Adres kaydedildi. Giriş yaparak test edin.")
-                            }
-                        } catch (e: Exception) {
-                            snackbar.showSnackbar("Bağlantı hatası: ${e.message}")
-                        } finally {
-                            testing.value = false
-                        }
-                    }
-                },
-                enabled = !testing.value,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                if (testing.value) {
-                    CircularProgressIndicator()
-                } else {
-                    Text("Bağlantıyı Test Et")
-                }
-            }
 
             if (onLogout != null) {
                 Spacer(modifier.height(16.dp))

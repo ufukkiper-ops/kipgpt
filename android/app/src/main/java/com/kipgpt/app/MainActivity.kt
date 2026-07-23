@@ -24,7 +24,6 @@ import com.kipgpt.app.data.ApiClient
 import com.kipgpt.app.data.SessionManager
 import com.kipgpt.app.ui.LoginScreen
 import com.kipgpt.app.ui.MainScreen
-import com.kipgpt.app.ui.SettingsScreen
 import com.kipgpt.app.ui.theme.KipGptTheme
 import kotlinx.coroutines.launch
 
@@ -91,20 +90,11 @@ private fun KipGptApp(
                 CircularProgressIndicator()
             }
         }
-        viewModel.showGuestSettings -> {
-            SettingsScreen(
-                apiClient = apiClient,
-                sessionManager = sessionManager,
-                onBack = { viewModel.closeGuestSettings() },
-                onLogout = null,
-            )
-        }
         authState is AuthState.LoggedOut -> {
             LoginScreen(
                 apiClient = apiClient,
                 sessionManager = sessionManager,
                 onLoggedIn = { },
-                onOpenSettings = { viewModel.openGuestSettings() },
             )
         }
         authState is AuthState.LoggedIn -> {
