@@ -345,54 +345,113 @@ def create_draft(config, to_email="", subject="", body="", attachments=None, cc=
         raise GmailApiError(_user_friendly_error(exc)) from exc
 
 
-def mark_mails_as_read(config, mail_ids):
-    """Gmail API: UNREAD etiketini kaldır."""
+def mark_mails_as_read(config, mail_ids, expand_threads=True):
+    """Gmail API: UNREAD etiketini kaldır. expand_threads=True ise tüm thread mesajları."""
     ids = [str(mid).strip() for mid in (mail_ids or []) if str(mid).strip()]
     if not ids:
         return 0
     try:
         service = build_gmail_service(config)
-        marked = 0
-        for mail_id in ids:
-            try:
-                service.users().messages().modify(
-                    userId="me",
-                    id=mail_id,
-                    body={"removeLabelIds": ["UNREAD"]},
-                ).execute()
-                marked += 1
-            except Exception:
-                continue
-        return marked
+        target_ids = list(ids)
+        if expand_threads:
+            target_ids = _expand_gmail_thread_message_ids(service, ids)
+        return _gmail_batch_set_unread(service, target_ids, unread=False)
     except GmailApiError:
         raise
     except Exception as exc:
         raise GmailApiError(_user_friendly_error(exc)) from exc
 
 
-def mark_mails_as_unread(config, mail_ids):
-    """Gmail API: UNREAD etiketi ekle."""
+def mark_mails_as_unread(config, mail_ids, expand_threads=True):
+    """Gmail API: UNREAD etiketi ekle. expand_threads=True ise tüm thread mesajları."""
     ids = [str(mid).strip() for mid in (mail_ids or []) if str(mid).strip()]
     if not ids:
         return 0
     try:
         service = build_gmail_service(config)
+        target_ids = list(ids)
+        if expand_threads:
+            target_ids = _expand_gmail_thread_message_ids(service, ids)
+        return _gmail_batch_set_unread(service, target_ids, unread=True)
+    except GmailApiError:
+        raise
+    except Exception as exc:
+        raise GmailApiError(_user_friendly_error(exc)) from exc
+
+
+def _expand_gmail_thread_message_ids(service, mail_ids):
+    """Verilen mesajların ait olduğu Gmail thread'lerindeki tüm mesaj ID'lerini topla."""
+    expanded = []
+    seen = set()
+    seen_threads = set()
+
+    for mail_id in mail_ids:
+        mid = str(mail_id or "").strip()
+        if not mid:
+            continue
+        try:
+            meta = (
+                service.users()
+                .messages()
+                .get(userId="me", id=mid, format="minimal")
+                .execute()
+            )
+            thread_id = (meta.get("threadId") or "").strip()
+            if thread_id and thread_id not in seen_threads:
+                seen_threads.add(thread_id)
+                thread = (
+                    service.users()
+                    .threads()
+                    .get(userId="me", id=thread_id, format="minimal")
+                    .execute()
+                )
+                for msg in thread.get("messages") or []:
+                    msg_id = str(msg.get("id") or "").strip()
+                    if msg_id and msg_id not in seen:
+                        seen.add(msg_id)
+                        expanded.append(msg_id)
+                continue
+        except Exception as exc:
+            print("GMAIL THREAD EXPAND HATASI:", exc)
+
+        if mid not in seen:
+            seen.add(mid)
+            expanded.append(mid)
+
+    return expanded or list(dict.fromkeys(str(x).strip() for x in mail_ids if str(x).strip()))
+
+
+def _gmail_batch_set_unread(service, mail_ids, unread=False):
+    ids = [str(mid).strip() for mid in (mail_ids or []) if str(mid).strip()]
+    if not ids:
+        return 0
+
+    body = {"ids": ids}
+    if unread:
+        body["addLabelIds"] = ["UNREAD"]
+        body["removeLabelIds"] = []
+    else:
+        body["removeLabelIds"] = ["UNREAD"]
+        body["addLabelIds"] = []
+
+    try:
+        service.users().messages().batchModify(userId="me", body=body).execute()
+        return len(ids)
+    except Exception:
+        # batchModify başarısızsa tek tek dene
         marked = 0
         for mail_id in ids:
             try:
+                mod = {"addLabelIds": ["UNREAD"]} if unread else {"removeLabelIds": ["UNREAD"]}
                 service.users().messages().modify(
                     userId="me",
                     id=mail_id,
-                    body={"addLabelIds": ["UNREAD"]},
+                    body=mod,
                 ).execute()
                 marked += 1
             except Exception:
                 continue
         return marked
-    except GmailApiError:
-        raise
-    except Exception as exc:
-        raise GmailApiError(_user_friendly_error(exc)) from exc
 
 
 def download_attachment(config, mail_id: str, index: int):

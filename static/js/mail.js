@@ -126,32 +126,51 @@
     function expandThreadIds(ids) {
         const out = [];
         const seen = {};
+
+        function add(id) {
+            const value = String(id || "").trim();
+            if (!value || seen[value]) return;
+            seen[value] = true;
+            out.push(value);
+        }
+
+        function addFromMail(mail) {
+            if (!mail) return;
+            add(mail.id);
+            (mail.thread_ids || []).forEach(add);
+            (mail.thread_messages || []).forEach(function (msg) {
+                if (msg) add(msg.id);
+            });
+        }
+
         (ids || []).forEach(function (rawId) {
             const mailId = String(rawId || "").trim();
             if (!mailId) return;
 
-            const mail = mailMap[mailId];
-            const fromMail = (mail && mail.thread_ids) || [];
+            add(mailId);
+            addFromMail(mailMap[mailId]);
+
             const row = document.querySelector('.gmail-row[data-mail-id="' + mailId + '"]');
-            const fromRow = row
-                ? String(row.dataset.threadIds || "")
+            if (row) {
+                String(row.dataset.threadIds || "")
+                    .split(",")
+                    .forEach(add);
+            }
+
+            // Aynı thread'teki diğer satırları da tara
+            document.querySelectorAll(".gmail-row").forEach(function (rowEl) {
+                const rowIds = String(rowEl.dataset.threadIds || "")
                     .split(",")
                     .map(function (v) { return v.trim(); })
-                    .filter(Boolean)
-                : [];
-
-            const group = fromRow.length ? fromRow : (fromMail.length ? fromMail : [mailId]);
-            group.forEach(function (id) {
-                if (id && !seen[id]) {
-                    seen[id] = true;
-                    out.push(id);
+                    .filter(Boolean);
+                if (rowIds.indexOf(mailId) >= 0 || rowEl.dataset.mailId === mailId) {
+                    rowIds.forEach(add);
+                    add(rowEl.dataset.mailId);
+                    addFromMail(mailMap[rowEl.dataset.mailId]);
                 }
             });
-            if (!seen[mailId]) {
-                seen[mailId] = true;
-                out.push(mailId);
-            }
         });
+
         return out;
     }
 
@@ -180,11 +199,19 @@
                 }
             }
             const mail = mailMap[rowId];
-            if (mail) mail.unread = unread;
-            if (mail && Array.isArray(mail.thread_messages)) {
-                mail.thread_messages.forEach(function (msg) {
-                    if (msg) msg.unread = unread;
+            if (mail) {
+                mail.unread = unread;
+                (mail.thread_ids || []).forEach(function (tid) {
+                    if (mailMap[tid]) mailMap[tid].unread = unread;
                 });
+                if (Array.isArray(mail.thread_messages)) {
+                    mail.thread_messages.forEach(function (msg) {
+                        if (msg) {
+                            msg.unread = unread;
+                            if (msg.id && mailMap[msg.id]) mailMap[msg.id].unread = unread;
+                        }
+                    });
+                }
             }
         });
 
@@ -192,6 +219,7 @@
             const mid = el.getAttribute("data-mail-id");
             if (mid && idSet[mid]) {
                 el.classList.toggle("is-unread", unread);
+                el.classList.toggle("is-read", !unread);
             }
         });
     }
@@ -202,15 +230,20 @@
         return fetch("/mail/mark-read", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            credentials: "same-origin",
             body: JSON.stringify({
                 mail_ids: ids,
                 folder: currentFolder === "unread" ? "inbox" : currentFolder,
                 account: currentAccount || undefined,
                 expand_threads: true,
             }),
-            keepalive: true,
         }).then(function (res) {
-            return res.json().catch(function () { return { ok: res.ok }; });
+            return res.json().then(function (data) {
+                data = data || {};
+                data.ok = data.ok !== false && res.ok;
+                data.http_ok = res.ok;
+                return data;
+            }).catch(function () { return { ok: res.ok, marked: 0 }; });
         }).catch(function () {
             return { ok: false };
         });
@@ -222,22 +255,26 @@
         return fetch("/mail/mark-unread", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            credentials: "same-origin",
             body: JSON.stringify({
                 mail_ids: ids,
                 folder: currentFolder === "unread" ? "inbox" : currentFolder,
                 account: currentAccount || undefined,
                 expand_threads: true,
             }),
-            keepalive: true,
         }).then(function (res) {
-            return res.json().catch(function () { return { ok: res.ok }; });
+            return res.json().then(function (data) {
+                data = data || {};
+                data.ok = data.ok !== false && res.ok;
+                data.http_ok = res.ok;
+                return data;
+            }).catch(function () { return { ok: res.ok, marked: 0 }; });
         }).catch(function () {
             return { ok: false };
         });
     }
 
     function markSelectionRead(unread) {
-        // Önce seçili/checkbox; yoksa açık mail
         let ids = [];
         if (typeof getMailIdsForAction === "function") {
             ids = getMailIdsForAction();
@@ -245,7 +282,14 @@
         if (!ids.length) {
             const mailId = document.body.dataset.activeMailId || "";
             const mail = mailMap[mailId];
-            ids = mail ? [mail.id].concat(mail.thread_ids || []) : (mailId ? [mailId] : []);
+            if (mail) {
+                ids = [mail.id].concat(mail.thread_ids || []);
+                (mail.thread_messages || []).forEach(function (msg) {
+                    if (msg && msg.id) ids.push(msg.id);
+                });
+            } else if (mailId) {
+                ids = [mailId];
+            }
         }
         ids = expandThreadIds(ids);
         if (!ids.length) {
@@ -261,8 +305,14 @@
 
         const persist = unread ? persistUnreadOnServer : persistReadOnServer;
         persist(ids).then(function (result) {
-            if (result && result.ok === false) {
+            const marked = (result && result.marked) || 0;
+            if (!result || result.ok === false) {
                 window.alert("Okundu durumu sunucuya yazılamadı. Sayfayı yenileyip tekrar deneyin.");
+                return;
+            }
+            // Kısa geri bildirim: kaç mesaj işaretlendi
+            if (marked > 1) {
+                console.info("KipGPT: " + marked + " mesaj " + (unread ? "okunmadı" : "okundu") + " işaretlendi.");
             }
         });
     }
@@ -1830,11 +1880,16 @@
                 .split(",")
                 .map(function (value) { return value.trim(); })
                 .filter(Boolean);
-            if (threadIds.length) {
-                return threadIds;
-            }
-            if (selectedRow.dataset.mailId) {
-                return [selectedRow.dataset.mailId];
+            const mail = mailMap[selectedRow.dataset.mailId];
+            const fromMessages = ((mail && mail.thread_messages) || [])
+                .map(function (msg) { return msg && msg.id; })
+                .filter(Boolean);
+            const merged = [];
+            threadIds.concat(fromMessages).concat(mail && mail.thread_ids || []).concat([selectedRow.dataset.mailId]).forEach(function (id) {
+                if (id && merged.indexOf(id) < 0) merged.push(id);
+            });
+            if (merged.length) {
+                return merged;
             }
         }
         if (aiMailId?.value) {

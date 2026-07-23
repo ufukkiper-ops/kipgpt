@@ -765,8 +765,8 @@ def get_archive(config, count=20):
     return get_first_available_folder(config, FOLDER_CANDIDATES["archive"], count)
 
 
-def mark_mails_as_read(config, folder, mail_ids, expand_threads=False):
-    """IMAP: \\Seen bayrağı ekle. Gmail API hesaplarında Gmail etiketini kaldır."""
+def mark_mails_as_read(config, folder, mail_ids, expand_threads=True):
+    """IMAP: \\Seen bayrağı ekle. Gmail API hesaplarında thread genişleterek UNREAD kaldır."""
     from services.gmail_api import is_gmail_api_config, mark_mails_as_read as gmail_mark_read
 
     ids = [str(mid).strip() for mid in (mail_ids or []) if str(mid).strip()]
@@ -774,12 +774,13 @@ def mark_mails_as_read(config, folder, mail_ids, expand_threads=False):
         return 0
 
     if is_gmail_api_config(config):
-        return gmail_mark_read(config, ids)
+        return gmail_mark_read(config, ids, expand_threads=expand_threads)
 
     mail = connect_mail(config, folder or "INBOX")
     marked = 0
     try:
-        if expand_threads:
+        # Gmail IMAP: X-GM-THRID ile serideki TÜM UID'leri bul
+        if expand_threads or _is_gmail_config(config):
             try:
                 ids = _expand_thread_uids_in_folder(mail, ids)
             except Exception as exc:
@@ -799,8 +800,8 @@ def mark_mails_as_read(config, folder, mail_ids, expand_threads=False):
     return marked
 
 
-def mark_mails_as_unread(config, folder, mail_ids, expand_threads=False):
-    """IMAP: \\Seen kaldır. Gmail API: UNREAD etiketi ekle."""
+def mark_mails_as_unread(config, folder, mail_ids, expand_threads=True):
+    """IMAP: \\Seen kaldır. Gmail API: thread genişleterek UNREAD ekle."""
     from services.gmail_api import is_gmail_api_config, mark_mails_as_unread as gmail_mark_unread
 
     ids = [str(mid).strip() for mid in (mail_ids or []) if str(mid).strip()]
@@ -808,12 +809,12 @@ def mark_mails_as_unread(config, folder, mail_ids, expand_threads=False):
         return 0
 
     if is_gmail_api_config(config):
-        return gmail_mark_unread(config, ids)
+        return gmail_mark_unread(config, ids, expand_threads=expand_threads)
 
     mail = connect_mail(config, folder or "INBOX")
     marked = 0
     try:
-        if expand_threads:
+        if expand_threads or _is_gmail_config(config):
             try:
                 ids = _expand_thread_uids_in_folder(mail, ids)
             except Exception as exc:
