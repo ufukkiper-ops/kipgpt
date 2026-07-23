@@ -161,11 +161,11 @@
                         <button class="icon-btn" type="button" title="Yenile" onclick="location.reload()">
                             <span class="material-icons-outlined">refresh</span>
                         </button>
-                        <button class="toolbar-text-btn" type="button" id="list-mark-read-btn" title="Seçili mailleri okundu işaretle">
+                        <button class="toolbar-text-btn" type="button" id="list-mark-read-btn" title="Seçili mailleri okundu işaretle" onclick="window.KipMail && window.KipMail.markRead(); return false;">
                             <span class="material-icons-outlined">mark_email_read</span>
                             <span>Okundu</span>
                         </button>
-                        <button class="toolbar-text-btn" type="button" id="list-mark-unread-btn" title="Seçili mailleri okunmadı işaretle">
+                        <button class="toolbar-text-btn" type="button" id="list-mark-unread-btn" title="Seçili mailleri okunmadı işaretle" onclick="window.KipMail && window.KipMail.markUnread(); return false;">
                             <span class="material-icons-outlined">mark_email_unread</span>
                             <span>Okunmadı</span>
                         </button>
@@ -866,6 +866,12 @@
 <script src="{{ url_for('static', filename='js/speech.js') }}?v=2"></script>
 <script id="provider-data" type="application/json">{{ providers|tojson }}</script>
 <script id="sensitivity-data" type="application/json">{{ sensitivity_presets|tojson }}</script>
-<script src="{{ url_for('static', filename='js/mail.js') }}?v=66"></script>
+<script>
+window.KipMail = window.KipMail || {
+  markRead: function () { alert("Mail script yüklenmedi. Ctrl+F5 ile sayfayı yenileyin."); },
+  markUnread: function () { alert("Mail script yüklenmedi. Ctrl+F5 ile sayfayı yenileyin."); }
+};
+</script>
+<script src="{{ url_for('static', filename='js/mail.js') }}?v=71"></script>
 <script src="{{ url_for('static', filename='js/mail-tools.js') }}?v=3"></script>
 {% endblock %}

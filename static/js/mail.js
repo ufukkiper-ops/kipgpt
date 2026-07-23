@@ -187,17 +187,43 @@
             const hit = (rowId && idSet[rowId]) || threadIds.some(function (id) { return idSet[id]; });
             if (!hit) return;
 
-            if (unread) {
-                row.classList.add("unread");
-                row.classList.remove("read");
+            row.classList.toggle("unread", !!unread);
+            row.classList.toggle("read", !unread);
+            if (!unread && currentFolder === "unread") {
+                row.hidden = true;
+            } else if (unread) {
                 row.hidden = false;
-            } else {
-                row.classList.remove("unread");
-                row.classList.add("read");
-                if (currentFolder === "unread") {
-                    row.hidden = true;
-                }
             }
+
+            // Seçili kalsa bile tipografi için style ile de zorla
+            const sender = row.querySelector(".row-sender");
+            const subject = row.querySelector(".row-subject");
+            const snippet = row.querySelector(".row-snippet");
+            const dateEl = row.querySelector(".row-date");
+            if (!unread) {
+                if (sender) {
+                    sender.style.fontWeight = "400";
+                    sender.style.color = "#5f6368";
+                }
+                if (subject) {
+                    subject.style.fontWeight = "400";
+                    subject.style.color = "#5f6368";
+                }
+                if (snippet) snippet.style.color = "#9aa0a6";
+                if (dateEl) dateEl.style.color = "#9aa0a6";
+            } else {
+                if (sender) {
+                    sender.style.fontWeight = "700";
+                    sender.style.color = "#202124";
+                }
+                if (subject) {
+                    subject.style.fontWeight = "700";
+                    subject.style.color = "#202124";
+                }
+                if (snippet) snippet.style.color = "#3c4043";
+                if (dateEl) dateEl.style.color = "#3c4043";
+            }
+
             const mail = mailMap[rowId];
             if (mail) {
                 mail.unread = unread;
@@ -2233,6 +2259,12 @@
 
     setupSpeechControls();
     setupReadStateButtons();
+
+    // Inline onclick / dışarıdan çağrı için
+    window.KipMail = {
+        markRead: function () { markSelectionRead(false); },
+        markUnread: function () { markSelectionRead(true); },
+    };
 
     function setupReadStateButtons() {
         const listMarkReadBtn = document.getElementById("list-mark-read-btn");
