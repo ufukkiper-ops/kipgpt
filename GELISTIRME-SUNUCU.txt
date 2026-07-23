@@ -51,6 +51,23 @@ Kurulum sırası (bir kez)
 • Geçici tünel URL değişirse: tunnel adresini telefona / APK'ya yaz
 • Sabit tünel için: tunnel\SETUP.txt
 
+Şifremi unuttum (sistem SMTP — sunucu .env)
+-------------------------------------------
+Sunucu PC .env dosyasına ekle (GitHub'a gitmez):
+
+  SMTP_HOST=smtp.gmail.com
+  SMTP_PORT=587
+  SMTP_USER=kipgptmail@gmail.com
+  SMTP_PASSWORD=xxxx   ← Google Uygulama Şifresi (16 hane; normal Gmail şifresi çalışmaz)
+  SMTP_FROM=kipgptmail@gmail.com
+
+Uygulama şifresi: Google Hesap → Güvenlik → Uygulama şifreleri
+
+Kalıcı giriş
+------------
+Web / masaüstü: giriş sonrası oturum çıkış yapılana kadar kalır.
+Masaüstü: KipGPT.exe (private_mode kapalı, çerezler LocalAppData\KipGPT\webview)
+
 Android APK
 -----------
 Geliştirme PC'de derle → telefona yükle.

@@ -41,6 +41,11 @@ def users_file_path() -> Path:
     return _migrate_legacy_file("users.json")
 
 
+def password_resets_file_path() -> Path:
+    ensure_data_dir()
+    return get_data_dir() / "password_resets.json"
+
+
 def chat_data_file_path() -> Path:
     return _migrate_legacy_file("data.json")
 

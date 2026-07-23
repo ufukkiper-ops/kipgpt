@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block body_class %}auth-page{% endblock %}
+
+{% block content %}
+
+<div class="auth-shell">
+<div class="card">
+
+<div class="auth-brand">
+    <img class="auth-brand-logo" src="{{ url_for('static', filename='img/kipgpt-logo.png') }}" width="280" height="280" alt="KipGPT — Akıllı • Güvenilir • Yanında">
+</div>
+
+<h2>Kodu Doğrula</h2>
+
+{% if error %}
+<div class="error">{{ error }}</div>
+{% endif %}
+{% if info %}
+<div class="success">{{ info }}</div>
+{% endif %}
+
+<p class="register-note">Kod <strong>{{ email }}</strong> adresine gönderildi.</p>
+
+<form method="post" class="auth-form">
+<input type="hidden" name="action" value="verify">
+<input type="text" name="code" placeholder="6 haneli kod" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autocomplete="one-time-code">
+<button class="btn btn-blue btn-block" type="submit">Doğrula</button>
+</form>
+
+<form method="post" class="auth-form" style="margin-top:0.75rem">
+<input type="hidden" name="action" value="resend">
+<button class="btn btn-block" type="submit">Kodu tekrar gönder</button>
+</form>
+
+<p class="auth-footer-link">
+<a href="{{ url_for('auth.forgot_password') }}">E-postayı değiştir</a>
+ ·
+<a href="{{ url_for('auth.login') }}">Giriş</a>
+</p>
+
+</div>
+</div>
+
+{% endblock %}

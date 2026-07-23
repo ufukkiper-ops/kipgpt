@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block body_class %}auth-page{% endblock %}
+
+{% block content %}
+
+<div class="auth-shell">
+<div class="card">
+
+<div class="auth-brand">
+    <img class="auth-brand-logo" src="{{ url_for('static', filename='img/kipgpt-logo.png') }}" width="280" height="280" alt="KipGPT — Akıllı • Güvenilir • Yanında">
+</div>
+
+<h2>Yeni Şifre</h2>
+
+{% if error %}
+<div class="error">{{ error }}</div>
+{% endif %}
+
+<p class="register-note">Hesap: <strong>{{ email }}</strong></p>
+
+<form method="post" class="auth-form" id="forgot-reset-form">
+<input
+    type="password"
+    name="password"
+    id="reset-password"
+    placeholder="Yeni şifre"
+    required
+    minlength="6"
+    autocomplete="new-password"
+>
+<input
+    type="password"
+    name="password2"
+    id="reset-password2"
+    placeholder="Yeni şifre tekrar"
+    required
+    minlength="6"
+    autocomplete="new-password"
+>
+
+<ul class="password-rules" aria-label="Şifre kuralları">
+    <li>En az <strong>6 karakter</strong></li>
+    <li>En az bir <strong>büyük harf</strong> (A–Z)</li>
+    <li>En az bir <strong>küçük harf</strong> (a–z)</li>
+    <li>En az bir <strong>sayı</strong> (0–9)</li>
+    <li>En az bir <strong>özel karakter</strong></li>
+</ul>
+
+<button class="btn btn-blue btn-block" type="submit">Şifreyi Güncelle</button>
+</form>
+
+<p class="auth-footer-link">
+<a href="{{ url_for('auth.login') }}">Giriş ekranına dön</a>
+</p>
+
+</div>
+</div>
+
+{% endblock %}

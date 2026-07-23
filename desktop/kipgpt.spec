@@ -3,7 +3,8 @@
 
 from pathlib import Path
 
-ROOT = Path(SPECPATH).resolve().parent.parent
+# SPECPATH = spec dosyasının bulunduğu klasör (desktop/)
+ROOT = Path(SPECPATH).resolve().parent
 
 block_cipher = None
 

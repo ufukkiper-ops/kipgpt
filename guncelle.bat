@@ -57,5 +57,21 @@ start "KipGPT Public" cmd /c "%~dp0start_public.bat"
 
 echo.
 echo Tamam. Veriler (users.json vb.) yerinde kaldi.
-echo Tunnel URL degistiyse telefonda / APK'da guncelle.
+echo Tunnel URL degistiyse: desktop\default_server_url.txt + masaustu / telefon.
+findstr /B /C:"SMTP_USER=" "%~dp0.env" >nul 2>&1
+if errorlevel 1 (
+  echo.
+  echo UYARI: .env icinde SMTP_USER yok. Sifremi unuttum mailleri icin:
+  echo   SMTP_HOST=smtp.gmail.com
+  echo   SMTP_PORT=587
+  echo   SMTP_USER=kipgptmail@gmail.com
+  echo   SMTP_PASSWORD=Google_Uygulama_Sifresi
+  echo   SMTP_FROM=kipgptmail@gmail.com
+) else (
+  findstr /B /C:"SMTP_PASSWORD=" "%~dp0.env" | findstr /V /C:"SMTP_PASSWORD=$" /C:"SMTP_PASSWORD= " >nul 2>&1
+  if errorlevel 1 (
+    echo.
+    echo UYARI: SMTP_PASSWORD bos olabilir. Gmail uygulama sifresi gerekli.
+  )
+)
 pause

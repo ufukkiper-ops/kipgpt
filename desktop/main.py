@@ -14,6 +14,23 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+# Windows görev çubuğu: pythonw yerine uygulama kimliği / .exe ikonu
+APP_USER_MODEL_ID = "KipGPT.Desktop.1"
+
+
+def _set_windows_app_id() -> None:
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_USER_MODEL_ID)
+    except Exception:
+        pass
+
+
+_set_windows_app_id()
+
 
 def _project_root() -> Path:
     if getattr(sys, "frozen", False):
@@ -160,6 +177,16 @@ def _icon_path() -> str | None:
     return None
 
 
+def _storage_path() -> str:
+    if sys.platform == "win32":
+        base = Path(os.environ.get("LOCALAPPDATA") or (Path.home() / "AppData" / "Local"))
+    else:
+        base = Path(os.environ.get("XDG_DATA_HOME") or (Path.home() / ".local" / "share"))
+    path = base / "KipGPT" / "webview"
+    path.mkdir(parents=True, exist_ok=True)
+    return str(path)
+
+
 def main() -> int:
     _load_env()
     settings = _settings()
@@ -209,7 +236,12 @@ def main() -> int:
         webview.create_window(**window_kwargs)
 
     gui = (os.environ.get("KIPGPT_WEBVIEW_GUI") or "").strip() or None
-    webview.start(gui=gui)
+    # private_mode=False + storage_path: oturum çerezleri uygulama kapanınca korunur
+    webview.start(
+        gui=gui,
+        private_mode=False,
+        storage_path=_storage_path(),
+    )
     return 0
 
 

@@ -16,6 +16,9 @@
 {% if error %}
 <div class="error">{{ error }}</div>
 {% endif %}
+{% if success %}
+<div class="success">{{ success }}</div>
+{% endif %}
 
 <form method="post" class="auth-form">
 
@@ -25,6 +28,10 @@
 <button class="btn btn-blue btn-block" type="submit">Giriş Yap</button>
 
 </form>
+
+<p class="auth-footer-link">
+<a href="{{ url_for('auth.forgot_password') }}">Şifremi unuttum</a>
+</p>
 
 <p class="auth-footer-link">
 <a href="{{ url_for('auth.register') }}">Hesabın yok mu? Kayıt Ol</a>

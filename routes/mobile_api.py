@@ -148,6 +148,64 @@ def api_login():
     })
 
 
+@mobile_api_bp.route("/forgot-password", methods=["POST"])
+def api_forgot_password():
+    from services.password_reset import request_reset_code
+
+    payload = request.get_json(silent=True) or {}
+    email = (payload.get("email") or "").strip().lower()
+    ok, message = request_reset_code(email)
+    status = 200 if ok else 400
+    return jsonify({"ok": ok, "message": message, "email": email if ok else None}), status
+
+
+@mobile_api_bp.route("/forgot-password/verify", methods=["POST"])
+def api_forgot_verify():
+    from services.password_reset import verify_reset_code
+
+    payload = request.get_json(silent=True) or {}
+    email = (payload.get("email") or "").strip().lower()
+    code = (payload.get("code") or "").strip()
+    ok, message = verify_reset_code(email, code)
+    status = 200 if ok else 400
+    return jsonify({"ok": ok, "message": message}), status
+
+
+@mobile_api_bp.route("/forgot-password/reset", methods=["POST"])
+def api_forgot_reset():
+    from services.password_reset import clear_reset, is_reset_verified
+    from users import set_local_password
+
+    payload = request.get_json(silent=True) or {}
+    email = (payload.get("email") or "").strip().lower()
+    password = (payload.get("password") or "").strip()
+    password2 = (payload.get("password2") or payload.get("password_confirm") or "").strip()
+
+    if not email or not password:
+        return jsonify({"ok": False, "error": "E-posta ve yeni şifre gerekli."}), 400
+    if password2 and password != password2:
+        return jsonify({"ok": False, "error": "Şifreler eşleşmiyor."}), 400
+    if not is_reset_verified(email):
+        return jsonify({
+            "ok": False,
+            "error": "Önce e-posta doğrulama kodunu onaylayın.",
+        }), 400
+
+    try:
+        user = set_local_password(email, password)
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+
+    if not user:
+        return jsonify({
+            "ok": False,
+            "error": "Hesap bulunamadı veya Google hesabı için şifre değiştirilemez.",
+        }), 400
+
+    clear_reset(email)
+    return jsonify({"ok": True, "message": "Şifreniz güncellendi."})
+
+
 @mobile_api_bp.route("/register", methods=["POST"])
 def api_register():
     payload = request.get_json(silent=True) or {}

@@ -185,6 +185,25 @@ def email_exists(email):
     return find_user_index_by_email(email) is not None
 
 
+def set_local_password(email, new_password):
+    """Yerel hesap şifresini güncelle. Başarılıysa user, aksi halde None."""
+    email = (email or "").strip().lower()
+    users = load_users()
+    index = find_user_index_by_email(email)
+    if index is None:
+        return None
+    user = users[index]
+    if user.get("auth_provider") == "google" and not user.get("password"):
+        return None
+    strength = validate_password_strength(new_password)
+    if strength:
+        raise ValueError(strength)
+    users[index]["password"] = hash_password(new_password)
+    users[index]["auth_provider"] = "local"
+    save_users(users)
+    return find_user_by_id(get_user_id(users[index]))
+
+
 def update_user_mail_tokens(email, token_data):
     users = load_users()
     index = find_user_index_by_email(email)

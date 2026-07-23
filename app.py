@@ -1,5 +1,6 @@
 import os
 import sys
+from datetime import timedelta
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parent
@@ -7,7 +8,26 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 from dotenv import load_dotenv
-load_dotenv(ROOT_DIR / ".env")
+
+def _load_env_file() -> None:
+    env_path = ROOT_DIR / ".env"
+    if not env_path.is_file():
+        return
+    try:
+        load_dotenv(env_path)
+        return
+    except UnicodeDecodeError:
+        pass
+    # PowerShell vs. UTF-8 karisimi: cp1254 ile oku, UTF-8'e cevir
+    try:
+        text = env_path.read_bytes().decode("cp1254")
+        env_path.write_text(text, encoding="utf-8", newline="\n")
+        load_dotenv(env_path)
+    except Exception:
+        load_dotenv(env_path, encoding="latin-1")
+
+
+_load_env_file()
 
 from services.env_setup import bootstrap_google_credentials
 bootstrap_google_credentials()
@@ -41,6 +61,12 @@ def create_app():
     application = Flask(__name__)
     application.secret_key = resolve_flask_secret_key()
     application.config["TEMPLATES_AUTO_RELOAD"] = True
+    # Oturum süre sınırı yok: çıkış yapılana kadar kalıcı (pratik üst sınır ~100 yıl)
+    application.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=36500)
+    application.config["SESSION_COOKIE_HTTPONLY"] = True
+    application.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+    public_base = (os.environ.get("PUBLIC_BASE_URL") or "").strip().lower()
+    application.config["SESSION_COOKIE_SECURE"] = public_base.startswith("https://")
     # Render / reverse-proxy: https ve Host bilgisini dogru oku (OAuth callback icin kritik)
     application.wsgi_app = ProxyFix(application.wsgi_app, x_for=1, x_proto=1, x_host=1)
 

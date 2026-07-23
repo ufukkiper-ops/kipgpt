@@ -38,6 +38,11 @@ def _init_user_data(email):
         save_data(data)
 
 
+def _establish_session(user_id: str) -> None:
+    session.permanent = True
+    session["user"] = user_id
+
+
 @auth_bp.route("/register", methods=["GET", "POST"])
 def register():
     if "user" in session:
@@ -76,7 +81,7 @@ def register():
                 })
                 save_users(users)
                 _init_user_data(email)
-                session["user"] = email
+                _establish_session(email)
                 # Istege bagli: kayit formunda "Gmail'i de bagla" secildiyse
                 if google_enabled and request.form.get("link_gmail") == "1":
                     session["mail_flash_success"] = (
@@ -307,7 +312,7 @@ def google_auth_callback():
             deep_link=deep_link,
         )
 
-    session["user"] = email
+    _establish_session(email)
     if mail_linked:
         session["mail_flash_success"] = f"{email} ile giriş yapıldı; Gmail bağlandı."
     return redirect(url_for("mail.mail_page"))
@@ -319,6 +324,7 @@ def login():
         return redirect(url_for("mail.mail_page"))
 
     error = session.pop("auth_error", "")
+    success = session.pop("auth_success", "")
     from services.oauth_mail import is_oauth_login_enabled
 
     google_enabled = is_oauth_login_enabled() and is_google_configured()
@@ -330,7 +336,7 @@ def login():
 
         if user:
             _init_user_data(get_user_id(user))
-            session["user"] = get_user_id(user)
+            _establish_session(get_user_id(user))
             return redirect(url_for("mail.mail_page"))
         else:
             error = "E-posta veya şifre hatalı."
@@ -338,8 +344,122 @@ def login():
     return render_template(
         "login.html",
         error=error,
+        success=success,
         google_enabled=google_enabled,
         title="Giriş Yap",
+    )
+
+
+@auth_bp.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    if "user" in session:
+        return redirect(url_for("mail.mail_page"))
+
+    from services.password_reset import request_reset_code
+
+    error = ""
+    info = ""
+    email = ""
+
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        ok, message = request_reset_code(email)
+        if ok:
+            session["password_reset_pending_email"] = email
+            return redirect(url_for("auth.forgot_verify"))
+        error = message
+
+    return render_template(
+        "forgot_password.html",
+        error=error,
+        info=info,
+        email=email,
+        title="Şifremi Unuttum",
+    )
+
+
+@auth_bp.route("/forgot-password/verify", methods=["GET", "POST"])
+def forgot_verify():
+    if "user" in session:
+        return redirect(url_for("mail.mail_page"))
+
+    from services.password_reset import request_reset_code, verify_reset_code
+
+    email = (session.get("password_reset_pending_email") or "").strip().lower()
+    if not email:
+        return redirect(url_for("auth.forgot_password"))
+
+    error = ""
+    info = "Doğrulama kodu e-posta adresinize gönderildi."
+
+    if request.method == "POST":
+        action = (request.form.get("action") or "verify").strip()
+        if action == "resend":
+            ok, message = request_reset_code(email)
+            if ok:
+                info = message
+            else:
+                error = message
+        else:
+            code = request.form.get("code", "").strip()
+            ok, message = verify_reset_code(email, code)
+            if ok:
+                session["password_reset_email"] = email
+                session.pop("password_reset_pending_email", None)
+                return redirect(url_for("auth.forgot_reset"))
+            error = message
+
+    return render_template(
+        "forgot_verify.html",
+        error=error,
+        info=info,
+        email=email,
+        title="Kodu Doğrula",
+    )
+
+
+@auth_bp.route("/forgot-password/reset", methods=["GET", "POST"])
+def forgot_reset():
+    if "user" in session:
+        return redirect(url_for("mail.mail_page"))
+
+    from services.password_reset import clear_reset, is_reset_verified
+    from users import set_local_password
+
+    email = (session.get("password_reset_email") or "").strip().lower()
+    if not email or not is_reset_verified(email):
+        session.pop("password_reset_email", None)
+        return redirect(url_for("auth.forgot_password"))
+
+    error = ""
+
+    if request.method == "POST":
+        password = request.form.get("password", "").strip()
+        password2 = request.form.get("password2", "").strip()
+        if not password or not password2:
+            error = "Yeni şifreyi girin."
+        elif password != password2:
+            error = "Şifreler eşleşmiyor."
+        else:
+            try:
+                user = set_local_password(email, password)
+            except ValueError as exc:
+                error = str(exc)
+                user = None
+            if not error:
+                if not user:
+                    error = "Hesap bulunamadı veya Google hesabı için şifre değiştirilemez."
+                else:
+                    clear_reset(email)
+                    session.pop("password_reset_email", None)
+                    session["auth_success"] = "Şifreniz güncellendi. Yeni şifrenizle giriş yapın."
+                    return redirect(url_for("auth.login"))
+
+    return render_template(
+        "forgot_reset.html",
+        error=error,
+        email=email,
+        title="Yeni Şifre",
     )
 
 
