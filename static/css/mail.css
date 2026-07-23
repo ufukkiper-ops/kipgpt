@@ -1245,16 +1245,29 @@ body.dialog-open .account-remove-form {
     background: #e8f1ff;
 }
 
-.gmail-row.selected .row-sender,
-.gmail-row.selected .row-subject {
+/* Seçili olsa bile okundu/okunmadı tipografisini koru */
+.gmail-row.selected.unread .row-sender,
+.gmail-row.selected.unread .row-subject {
     color: #174ea6;
     font-weight: 700;
 }
 
-.gmail-row.selected .row-snippet,
-.gmail-row.selected .row-date {
+.gmail-row.selected.read .row-sender,
+.gmail-row.selected.read .row-subject {
+    color: #5f6368;
+    font-weight: 400;
+}
+
+.gmail-row.selected.unread .row-snippet,
+.gmail-row.selected.unread .row-date {
     color: #3c4043;
     font-weight: 500;
+}
+
+.gmail-row.selected.read .row-snippet,
+.gmail-row.selected.read .row-date {
+    color: #9aa0a6;
+    font-weight: 400;
 }
 
 .gmail-row.selected:hover {
@@ -1383,8 +1396,12 @@ body.dialog-open .account-remove-form {
     flex-shrink: 0;
 }
 
-.gmail-row.is-thread .row-subject {
-    font-weight: 600;
+.gmail-row.is-thread.unread .row-subject {
+    font-weight: 700;
+}
+
+.gmail-row.is-thread.read .row-subject {
+    font-weight: 400;
 }
 
 .row-separator {

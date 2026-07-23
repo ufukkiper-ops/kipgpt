@@ -274,11 +274,87 @@
         });
     }
 
+    function showReadStatusToast(message, isError) {
+        let el = document.getElementById("mail-read-toast");
+        if (!el) {
+            el = document.createElement("div");
+            el.id = "mail-read-toast";
+            el.style.cssText = [
+                "position:fixed",
+                "left:50%",
+                "bottom:24px",
+                "transform:translateX(-50%)",
+                "z-index:9999",
+                "padding:10px 16px",
+                "border-radius:8px",
+                "font:600 13px/1.4 system-ui,sans-serif",
+                "box-shadow:0 8px 24px rgba(0,0,0,.18)",
+                "max-width:90vw",
+            ].join(";");
+            document.body.appendChild(el);
+        }
+        el.style.background = isError ? "#fce8e6" : "#e6f4ea";
+        el.style.color = isError ? "#c5221f" : "#137333";
+        el.textContent = message;
+        el.hidden = false;
+        window.clearTimeout(el._hideTimer);
+        el._hideTimer = window.setTimeout(function () {
+            el.hidden = true;
+        }, 3500);
+    }
+
     function markSelectionRead(unread) {
         let ids = [];
-        if (typeof getMailIdsForAction === "function") {
+
+        // 1) Tikli satırlar — data-thread-ids ile tüm seri
+        document.querySelectorAll(".gmail-row .mail-check:checked").forEach(function (cb) {
+            const row = cb.closest(".gmail-row");
+            if (!row) return;
+            String(row.dataset.threadIds || "")
+                .split(",")
+                .concat([row.dataset.mailId])
+                .forEach(function (id) {
+                    id = String(id || "").trim();
+                    if (id && ids.indexOf(id) < 0) ids.push(id);
+                });
+            const mail = mailMap[row.dataset.mailId];
+            if (mail) {
+                (mail.thread_ids || []).forEach(function (id) {
+                    if (id && ids.indexOf(id) < 0) ids.push(id);
+                });
+                (mail.thread_messages || []).forEach(function (msg) {
+                    if (msg && msg.id && ids.indexOf(msg.id) < 0) ids.push(msg.id);
+                });
+            }
+        });
+
+        // 2) Seçili / açık satır
+        if (!ids.length) {
+            const selectedRow = document.querySelector(".gmail-row.selected");
+            if (selectedRow) {
+                String(selectedRow.dataset.threadIds || "")
+                    .split(",")
+                    .concat([selectedRow.dataset.mailId])
+                    .forEach(function (id) {
+                        id = String(id || "").trim();
+                        if (id && ids.indexOf(id) < 0) ids.push(id);
+                    });
+                const mail = mailMap[selectedRow.dataset.mailId];
+                if (mail) {
+                    (mail.thread_ids || []).forEach(function (id) {
+                        if (id && ids.indexOf(id) < 0) ids.push(id);
+                    });
+                    (mail.thread_messages || []).forEach(function (msg) {
+                        if (msg && msg.id && ids.indexOf(msg.id) < 0) ids.push(msg.id);
+                    });
+                }
+            }
+        }
+
+        if (!ids.length && typeof getMailIdsForAction === "function") {
             ids = getMailIdsForAction();
         }
+
         if (!ids.length) {
             const mailId = document.body.dataset.activeMailId || "";
             const mail = mailMap[mailId];
@@ -291,12 +367,14 @@
                 ids = [mailId];
             }
         }
+
         ids = expandThreadIds(ids);
         if (!ids.length) {
-            window.alert("Önce listeden bir mail seçin veya işaretleyin.");
+            showReadStatusToast("Önce listeden bir mail seçin veya işaretleyin.", true);
             return;
         }
 
+        // Anında görsel güncelle
         ids.forEach(function (id) {
             if (unread) markAsUnread(id);
             else markAsRead(id);
@@ -304,16 +382,29 @@
         updateRowsReadState(ids, unread);
 
         const persist = unread ? persistUnreadOnServer : persistReadOnServer;
+        const requested = ids.length;
+        showReadStatusToast(
+            (unread ? "Okunmadı yapılıyor" : "Okundu yapılıyor") + ": " + requested + " mesaj…",
+            false
+        );
+
         persist(ids).then(function (result) {
             const marked = (result && result.marked) || 0;
             if (!result || result.ok === false) {
-                window.alert("Okundu durumu sunucuya yazılamadı. Sayfayı yenileyip tekrar deneyin.");
+                showReadStatusToast("Sunucuya yazılamadı. Sayfayı yenileyip tekrar deneyin.", true);
                 return;
             }
-            // Kısa geri bildirim: kaç mesaj işaretlendi
-            if (marked > 1) {
-                console.info("KipGPT: " + marked + " mesaj " + (unread ? "okunmadı" : "okundu") + " işaretlendi.");
+            if (!unread && marked > 0 && marked < requested) {
+                showReadStatusToast(
+                    "Kısmen işaretlendi: " + marked + "/" + requested + ". Yenileyip tekrar deneyin.",
+                    true
+                );
+                return;
             }
+            showReadStatusToast(
+                (unread ? "Okunmadı" : "Okundu") + ": " + (marked || requested) + " mesaj işaretlendi.",
+                false
+            );
         });
     }
 

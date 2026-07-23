@@ -780,11 +780,21 @@ def mark_mails_as_read(config, folder, mail_ids, expand_threads=True):
     marked = 0
     try:
         # Gmail IMAP: X-GM-THRID ile serideki TÜM UID'leri bul
-        if expand_threads or _is_gmail_config(config):
+        if expand_threads and _is_gmail_config(config):
             try:
                 ids = _expand_thread_uids_in_folder(mail, ids)
             except Exception as exc:
                 print("MARK-READ THREAD EXPAND HATASI:", exc)
+
+        # Toplu STORE (daha güvenilir); olmazsa tek tek
+        try:
+            joined = b",".join(_mail_id_bytes(mid) for mid in ids)
+            status, _ = mail.uid("store", joined, "+FLAGS", "(\\Seen)")
+            if status == "OK":
+                return len(ids)
+        except Exception as exc:
+            print("MARK-READ TOPLU STORE HATASI:", exc)
+
         for mail_id in ids:
             try:
                 status, _ = mail.uid("store", _mail_id_bytes(mail_id), "+FLAGS", "(\\Seen)")
@@ -814,11 +824,20 @@ def mark_mails_as_unread(config, folder, mail_ids, expand_threads=True):
     mail = connect_mail(config, folder or "INBOX")
     marked = 0
     try:
-        if expand_threads or _is_gmail_config(config):
+        if expand_threads and _is_gmail_config(config):
             try:
                 ids = _expand_thread_uids_in_folder(mail, ids)
             except Exception as exc:
                 print("MARK-UNREAD THREAD EXPAND HATASI:", exc)
+
+        try:
+            joined = b",".join(_mail_id_bytes(mid) for mid in ids)
+            status, _ = mail.uid("store", joined, "-FLAGS", "(\\Seen)")
+            if status == "OK":
+                return len(ids)
+        except Exception as exc:
+            print("MARK-UNREAD TOPLU STORE HATASI:", exc)
+
         for mail_id in ids:
             try:
                 status, _ = mail.uid("store", _mail_id_bytes(mail_id), "-FLAGS", "(\\Seen)")
