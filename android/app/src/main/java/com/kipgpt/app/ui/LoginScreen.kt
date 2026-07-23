@@ -96,7 +96,7 @@ fun LoginScreen(
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             )
-            Spacer(Modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             OutlinedTextField(
                 value = password.value,
                 onValueChange = { password.value = it },
@@ -118,7 +118,7 @@ fun LoginScreen(
                 },
             )
             if (isRegister.value) {
-                Spacer(Modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     "En az 6 karakter; büyük + küçük harf, sayı ve herhangi bir özel işaret",
                     style = MaterialTheme.typography.bodySmall,
