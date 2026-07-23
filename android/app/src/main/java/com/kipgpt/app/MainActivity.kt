@@ -23,7 +23,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kipgpt.app.data.ApiClient
 import com.kipgpt.app.data.SessionManager
 import com.kipgpt.app.ui.LoginScreen
-import com.kipgpt.app.ui.MainScreen
+import com.kipgpt.app.ui.WebMailScreen
 import com.kipgpt.app.ui.theme.KipGptTheme
 import kotlinx.coroutines.launch
 
@@ -98,9 +98,9 @@ private fun KipGptApp(
             )
         }
         authState is AuthState.LoggedIn -> {
-            MainScreen(
-                apiClient = apiClient,
-                sessionManager = sessionManager,
+            WebMailScreen(
+                apiBaseUrl = baseUrl,
+                token = token.orEmpty(),
                 onLogout = {
                     scope.launch {
                         viewModel.logout()

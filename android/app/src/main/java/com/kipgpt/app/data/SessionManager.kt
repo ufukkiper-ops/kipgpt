@@ -37,6 +37,15 @@ class SessionManager(private val context: Context) {
         fun isPlaceholderLanUrl(url: String): Boolean {
             return url.contains(LAN_IP_PLACEHOLDER) && !url.contains("trycloudflare.com")
         }
+
+        /** API tabanı → web kökü (…/api/v1/ → …). */
+        fun webOriginFromApiBase(apiBase: String): String {
+            var origin = apiBase.trim().trimEnd('/')
+            if (origin.endsWith("/api/v1")) {
+                origin = origin.removeSuffix("/api/v1")
+            }
+            return origin.trimEnd('/')
+        }
     }
 
     val tokenFlow: Flow<String?> = context.dataStore.data.map { prefs ->

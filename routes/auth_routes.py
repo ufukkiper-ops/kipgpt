@@ -43,6 +43,28 @@ def _establish_session(user_id: str) -> None:
     session["user"] = user_id
 
 
+@auth_bp.route("/auth/mobile-handoff")
+def mobile_handoff():
+    """Android API token → web oturumu; ardından /mail (web UI)."""
+    from flask import current_app
+
+    from services.api_auth import get_bearer_token, verify_api_token
+
+    token = (request.args.get("token") or "").strip() or (get_bearer_token() or "")
+    user_id = verify_api_token(current_app.secret_key, token)
+    if not user_id:
+        session.pop("user", None)
+        session["auth_error"] = "Oturum geçersiz veya süresi dolmuş. Tekrar giriş yapın."
+        return redirect(url_for("auth.login"))
+
+    _init_user_data(user_id)
+    _establish_session(user_id)
+    next_path = (request.args.get("next") or "/mail").strip() or "/mail"
+    if not next_path.startswith("/") or next_path.startswith("//"):
+        next_path = "/mail"
+    return redirect(next_path)
+
+
 @auth_bp.route("/register", methods=["GET", "POST"])
 def register():
     if "user" in session:
