@@ -110,10 +110,33 @@
         if (row) {
             row.classList.remove("unread");
             row.classList.add("read");
+            if (currentFolder === "unread") {
+                row.hidden = true;
+            }
         }
 
         const mail = mailMap[mailId];
         if (mail) mail.unread = false;
+    }
+
+    function markAsUnread(mailId) {
+        if (!mailId) return;
+
+        const readSet = getReadSet();
+        if (readSet.has(mailId)) {
+            readSet.delete(mailId);
+            saveReadSet(readSet);
+        }
+
+        const row = document.querySelector('[data-mail-id="' + mailId + '"]');
+        if (row) {
+            row.classList.add("unread");
+            row.classList.remove("read");
+            row.hidden = false;
+        }
+
+        const mail = mailMap[mailId];
+        if (mail) mail.unread = true;
     }
 
     function persistReadOnServer(mailIds) {
@@ -125,7 +148,7 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     mail_ids: ids,
-                    folder: currentFolder,
+                    folder: currentFolder === "unread" ? "inbox" : currentFolder,
                     account: currentAccount || undefined,
                 }),
                 keepalive: true,
@@ -133,8 +156,33 @@
         } catch (_err) {}
     }
 
+    function persistUnreadOnServer(mailIds) {
+        const ids = (mailIds || []).filter(Boolean);
+        if (!ids.length) return;
+        try {
+            fetch("/mail/mark-unread", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    mail_ids: ids,
+                    folder: currentFolder === "unread" ? "inbox" : currentFolder,
+                    account: currentAccount || undefined,
+                }),
+                keepalive: true,
+            }).catch(function () {});
+        } catch (_err) {}
+    }
+
+    function activeMailIds() {
+        const mailId = document.body.dataset.activeMailId || "";
+        const mail = mailMap[mailId] || currentMailForReply;
+        if (!mail) return mailId ? [mailId] : [];
+        return [mail.id].concat(mail.thread_ids || []).filter(Boolean);
+    }
+
     function applyReadState() {
         const readSet = getReadSet();
+        let changed = false;
 
         document.querySelectorAll(".gmail-row").forEach(function (row) {
             const mailId = row.dataset.mailId;
@@ -142,17 +190,22 @@
             const serverUnread = mail && typeof mail.unread === "boolean" ? mail.unread : null;
             let isUnread;
 
-            if (readSet.has(mailId)) {
+            if (serverUnread === false) {
                 isUnread = false;
-            } else if (serverUnread === false) {
-                isUnread = false;
-                // Sunucu okundu diyorsa local'e de yaz (kalıcılık)
-                readSet.add(mailId);
+                if (!readSet.has(mailId)) {
+                    readSet.add(mailId);
+                    changed = true;
+                }
             } else if (serverUnread === true) {
+                // Sunucu okunmamış diyorsa local cache'i ezme (uygulama/tarayıcı eşitlemesi)
                 isUnread = true;
+                if (readSet.has(mailId)) {
+                    readSet.delete(mailId);
+                    changed = true;
+                }
+            } else if (readSet.has(mailId)) {
+                isUnread = false;
             } else {
-                // Sunucu bilgisi yoksa: bilinmeyenleri okunmamış sayma; varsayılan okundu
-                // (yeniden girişte sahte "okunmamış" yağmurunu önler)
                 isUnread = false;
             }
 
@@ -164,7 +217,9 @@
                 row.classList.remove("unread");
             }
         });
-        saveReadSet(readSet);
+        if (changed) {
+            saveReadSet(readSet);
+        }
     }
 
     const aiDraftData = JSON.parse(
@@ -1945,6 +2000,30 @@
     }
 
     setupSpeechControls();
+    setupReadStateButtons();
+
+    function setupReadStateButtons() {
+        const markReadBtn = document.getElementById("mark-read-btn");
+        const markUnreadBtn = document.getElementById("mark-unread-btn");
+
+        if (markReadBtn) {
+            markReadBtn.addEventListener("click", function () {
+                const ids = activeMailIds();
+                if (!ids.length) return;
+                ids.forEach(markAsRead);
+                persistReadOnServer(ids);
+            });
+        }
+
+        if (markUnreadBtn) {
+            markUnreadBtn.addEventListener("click", function () {
+                const ids = activeMailIds();
+                if (!ids.length) return;
+                ids.forEach(markAsUnread);
+                persistUnreadOnServer(ids);
+            });
+        }
+    }
 
     function setupSpeechControls() {
         const micPairs = [

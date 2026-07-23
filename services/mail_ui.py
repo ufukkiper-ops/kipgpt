@@ -62,7 +62,7 @@ FOLDER_IMAP = {
 }
 
 
-def load_folder_mails(folder, mail_config, count=20, settings=None, filter_spam=True, search=""):
+def load_folder_mails(folder, mail_config, count=20, settings=None, filter_spam=True, search="", user_id=None):
     meta = {}
     settings = settings or {}
 
@@ -83,8 +83,9 @@ def load_folder_mails(folder, mail_config, count=20, settings=None, filter_spam=
             return [], meta
 
     if folder == "unread":
-        # IMAP hesaplarında okunmamış: gelen kutusundan istemci tarafı filtre
-        folder = "inbox"
+        fetch_count = min(count, settings.get("inbox_fetch_count", count))
+        mailler = get_unread_imap(mail_config, fetch_count)
+        return group_mails_by_thread(mailler), meta
 
     if folder == "inbox":
         fetch_count = min(count, settings.get("inbox_fetch_count", count))
@@ -93,6 +94,7 @@ def load_folder_mails(folder, mail_config, count=20, settings=None, filter_spam=
             fetch_count,
             filter_spam=filter_spam,
             settings={**settings, "inbox_fetch_count": fetch_count},
+            user_id=user_id,
         )
         if spam_moved:
             meta["spam_moved"] = spam_moved
@@ -115,6 +117,40 @@ def load_folder_mails(folder, mail_config, count=20, settings=None, filter_spam=
         result = group_mails_by_thread(result)
 
     return result, meta
+
+
+def get_unread_imap(mail_config, count=50):
+    """IMAP UNSEEN araması — yalnızca okunmamış mailler."""
+    try:
+        from mail import connect_mail
+
+        mail = connect_mail(mail_config, "INBOX")
+        try:
+            status, messages = mail.uid("search", None, "UNSEEN")
+            if status != "OK" or not messages or not messages[0]:
+                return []
+            ids = messages[0].split()
+            result = []
+            for mail_id in reversed(ids[-count:]):
+                try:
+                    thread_id, raw, unread = _fetch_mail_by_uid(mail, mail_id, mail_config)
+                    if not raw:
+                        continue
+                    parsed = parse_message(raw, thread_id=thread_id)
+                    parsed["id"] = mail_id.decode()
+                    parsed["unread"] = True if unread is None else bool(unread)
+                    result.append(parsed)
+                except Exception:
+                    continue
+            return result
+        finally:
+            try:
+                mail.logout()
+            except Exception:
+                pass
+    except Exception as e:
+        print("UNREAD IMAP HATASI:", e)
+        return []
 
 
 def get_starred_imap(mail_config, count=20):
@@ -143,8 +179,12 @@ def get_starred_imap(mail_config, count=20):
                     continue
             return result
         finally:
-            mail.logout()
-    except Exception:
+            try:
+                mail.logout()
+            except Exception:
+                pass
+    except Exception as e:
+        print("STARRED IMAP HATASI:", e)
         return []
 
 
@@ -167,12 +207,6 @@ def load_single_mail(folder, mail_config, mail_id):
         parsed = parse_message(raw, thread_id=thread_id)
         parsed["id"] = str(mail_id)
         parsed["unread"] = bool(unread)
-        # Açıldığında IMAP üzerinde okundu işaretle
-        try:
-            mail_conn.uid("store", _mail_id_bytes(mail_id), "+FLAGS", "(\\Seen)")
-            parsed["unread"] = False
-        except Exception:
-            pass
         return parsed
     finally:
         try:
@@ -257,7 +291,18 @@ def _move_mails_to_inbox(form, mail_config, source_folder_key):
     if moved == 0:
         raise Exception(errors[0] if errors else "Mail taşınamadı.")
 
-    return moved, errors, senders
+    message_ids = []
+    for mail in folder_mails:
+        mail_id = str(mail.get("id") or "").strip()
+        thread_ids = {str(tid).strip() for tid in (mail.get("thread_ids") or []) if str(tid).strip()}
+        if mail_id in selected or (thread_ids & selected):
+            msgid = str(mail.get("message_id") or "").strip()
+            if msgid:
+                message_ids.append(msgid)
+            if mail_id:
+                message_ids.append(mail_id)
+
+    return moved, errors, senders, message_ids
 
 
 def generate_ai_mail_reply(
@@ -568,13 +613,16 @@ def handle_mail_action(form, mail_config, files=None, user=None):
 
     elif islem == "spam_cikar":
         try:
-            moved, errors, senders = _move_mails_to_inbox(form, mail_config, "spam")
+            moved, errors, senders, restore_ids = _move_mails_to_inbox(form, mail_config, "spam")
             trusted_added = []
-            if user and senders:
-                from services.mail_settings import add_trusted_senders
+            if user:
+                from services.mail_settings import add_spam_exempt_ids, add_trusted_senders
 
                 user_id = (user.get("email") or user.get("username") or "").strip()
-                trusted_added = add_trusted_senders(user_id, senders)
+                if senders:
+                    trusted_added = add_trusted_senders(user_id, senders)
+                if restore_ids:
+                    add_spam_exempt_ids(user_id, restore_ids)
             if moved == 1:
                 success_message = "Mail spam klasöründen çıkarıldı ve gelen kutusuna taşındı."
             else:
@@ -591,7 +639,7 @@ def handle_mail_action(form, mail_config, files=None, user=None):
 
     elif islem == "cop_kurtar":
         try:
-            moved, errors, _senders = _move_mails_to_inbox(form, mail_config, "trash")
+            moved, errors, _senders, _restore_ids = _move_mails_to_inbox(form, mail_config, "trash")
             if moved == 1:
                 success_message = "Mail çöp kutusundan geri alındı ve gelen kutusuna taşındı."
             else:

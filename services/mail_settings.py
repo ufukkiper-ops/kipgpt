@@ -1,3 +1,5 @@
+import re
+
 from users import load_users, save_users
 
 DEFAULT_MAIL_SETTINGS = {
@@ -8,6 +10,7 @@ DEFAULT_MAIL_SETTINGS = {
     "spam_use_ai": False,
     "trusted_senders": "",
     "blocked_senders": "",
+    "spam_exempt_ids": "",
     "inbox_fetch_count": 150,
 }
 
@@ -55,9 +58,10 @@ def get_mail_settings(user):
     raw = (user or {}).get("mail_settings") or {}
     settings = {**DEFAULT_MAIL_SETTINGS, **raw}
 
-    settings["auto_spam_filter"] = _coerce_bool(settings.get("auto_spam_filter"), True)
-    settings["spam_move_to_folder"] = _coerce_bool(settings.get("spam_move_to_folder"), True)
-    settings["spam_use_ai"] = _coerce_bool(settings.get("spam_use_ai"), True)
+    # Varsayılan: otomatik spam taşıma kapalı (her girişte yeniden spam olmasın)
+    settings["auto_spam_filter"] = _coerce_bool(settings.get("auto_spam_filter"), False)
+    settings["spam_move_to_folder"] = _coerce_bool(settings.get("spam_move_to_folder"), False)
+    settings["spam_use_ai"] = _coerce_bool(settings.get("spam_use_ai"), False)
 
     sensitivity = settings.get("spam_sensitivity", "normal")
     if sensitivity not in SENSITIVITY_PRESETS:
@@ -77,7 +81,51 @@ def get_mail_settings(user):
 
     settings["trusted_senders"] = str(settings.get("trusted_senders") or "")
     settings["blocked_senders"] = str(settings.get("blocked_senders") or "")
+    settings["spam_exempt_ids"] = str(settings.get("spam_exempt_ids") or "")
     return settings
+
+
+def parse_id_list(text):
+    items = []
+    for part in re.split(r"[\s,;]+", str(text or "")):
+        value = part.strip()
+        if value:
+            items.append(value)
+    return items
+
+
+def add_spam_exempt_ids(user_id, mail_ids):
+    """Bir kez işlenen / spam'dan çıkarılan mailleri tekrar otomatik spam'e alma."""
+    user_id = (user_id or "").strip()
+    ids = []
+    for mail_id in mail_ids or []:
+        value = str(mail_id or "").strip()
+        if value and value not in ids:
+            ids.append(value)
+    if not user_id or not ids:
+        return []
+
+    users = load_users()
+    added = []
+    for index, user in enumerate(users):
+        if (user.get("email") or user.get("username") or "").strip() != user_id:
+            continue
+
+        raw = dict(user.get("mail_settings") or {})
+        existing = parse_id_list(raw.get("spam_exempt_ids"))
+        for mail_id in ids:
+            if mail_id not in existing:
+                existing.append(mail_id)
+                added.append(mail_id)
+        # Liste şişmesin
+        if len(existing) > 2000:
+            existing = existing[-2000:]
+        raw["spam_exempt_ids"] = "\n".join(existing)
+        users[index]["mail_settings"] = raw
+        save_users(users)
+        return added
+
+    return []
 
 
 def get_spam_thresholds(settings):
@@ -190,6 +238,10 @@ def save_mail_settings(user_id, form):
     users = load_users()
     for index, user in enumerate(users):
         if (user.get("email") or user.get("username") or "").strip() == user_id:
+            existing = dict(user.get("mail_settings") or {})
+            # Formda olmayan kalıcı alanları koru (spam exempt vb.)
+            if "spam_exempt_ids" in existing and "spam_exempt_ids" not in settings:
+                settings["spam_exempt_ids"] = existing.get("spam_exempt_ids") or ""
             users[index]["mail_settings"] = settings
             save_users(users)
             return get_mail_settings(users[index])

@@ -156,6 +156,31 @@ data class MailItem(
     val attachments: List<MailAttachment> = emptyList(),
     val thread_count: Int = 1,
     val starred: Boolean = false,
+    val unread: Boolean = false,
+)
+
+data class MarkMailReadRequest(
+    val mail_id: String = "",
+    val mail_ids: List<String> = emptyList(),
+    val folder: String = "inbox",
+    val account: String? = null,
+)
+
+data class MarkMailReadResponse(
+    val ok: Boolean = false,
+    val marked: Int = 0,
+)
+
+data class MarkMailUnreadRequest(
+    val mail_id: String = "",
+    val mail_ids: List<String> = emptyList(),
+    val folder: String = "inbox",
+    val account: String? = null,
+)
+
+data class MarkMailUnreadResponse(
+    val ok: Boolean = false,
+    val marked: Int = 0,
 )
 
 data class MailListResponse(

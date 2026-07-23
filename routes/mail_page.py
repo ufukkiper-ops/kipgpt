@@ -266,6 +266,44 @@ def mail_mark_read():
         return jsonify({"error": str(exc)}), 500
 
 
+@mail_bp.route("/mail/mark-unread", methods=["POST"])
+def mail_mark_unread():
+    if "user" not in session:
+        return jsonify({"error": "Oturum gerekli."}), 401
+
+    user = find_user_by_id(session.get("user"))
+    if not user:
+        return jsonify({"error": "Kullanıcı bulunamadı."}), 404
+
+    data = request.get_json(silent=True) or {}
+    mail_ids = data.get("mail_ids") or []
+    if isinstance(mail_ids, str):
+        mail_ids = [part.strip() for part in mail_ids.split(",") if part.strip()]
+    single = (data.get("mail_id") or "").strip()
+    if single and single not in mail_ids:
+        mail_ids.append(single)
+
+    folder = (data.get("folder") or request.args.get("folder") or "inbox").strip() or "inbox"
+    account_id = (data.get("account") or request.args.get("account") or "").strip() or None
+    if account_id:
+        set_active_account(user, session, account_id)
+        user = find_user_by_id(session.get("user")) or user
+
+    mail_config, _active = resolve_active_mail_config(user, session, account_id)
+    if not mail_config:
+        return jsonify({"error": "Mail hesabı bağlı değil."}), 400
+
+    try:
+        from mail import mark_mails_as_unread
+        from services.mail_ui import get_imap_folder_name
+
+        imap_folder = get_imap_folder_name(folder, mail_config)
+        marked = mark_mails_as_unread(mail_config, imap_folder, mail_ids)
+        return jsonify({"ok": True, "marked": marked})
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+
 @mail_bp.route("/mail", methods=["GET", "POST"])
 def mail_page():
     if "user" not in session:
@@ -339,8 +377,13 @@ def mail_page():
     spam_moved = 0
     if mail_config:
         try:
+            user_id = (user.get("email") or user.get("username") or "").strip()
             mailler, mail_meta = load_folder_mails(
-                folder, mail_config, settings=mail_settings, search=search
+                folder,
+                mail_config,
+                settings=mail_settings,
+                search=search,
+                user_id=user_id,
             )
             spam_moved = mail_meta.get("spam_moved", 0)
             if mail_meta.get("error") and not error:
@@ -370,8 +413,13 @@ def mail_page():
                     user = find_user_by_id(session.get("user")) or user
                     mail_settings = get_mail_settings(user)
                 try:
+                    user_id = (user.get("email") or user.get("username") or "").strip()
                     mailler, mail_meta = load_folder_mails(
-                        folder, mail_config, settings=mail_settings, search=search
+                        folder,
+                        mail_config,
+                        settings=mail_settings,
+                        search=search,
+                        user_id=user_id,
                     )
                     spam_moved = mail_meta.get("spam_moved", 0)
                     if mail_meta.get("error") and not error:

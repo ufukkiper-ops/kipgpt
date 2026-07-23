@@ -45,6 +45,8 @@ import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ManageAccounts
+import androidx.compose.material.icons.filled.MarkEmailRead
+import androidx.compose.material.icons.filled.MarkEmailUnread
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.activity.compose.BackHandler
@@ -111,6 +113,8 @@ import com.kipgpt.app.data.MailAttachment
 import com.kipgpt.app.data.MailFolder
 import com.kipgpt.app.data.MailItem
 import com.kipgpt.app.data.MailProviderPreset
+import com.kipgpt.app.data.MarkMailReadRequest
+import com.kipgpt.app.data.MarkMailUnreadRequest
 import com.kipgpt.app.data.OAuthProviderStatus
 import com.kipgpt.app.data.MailSaveDraftRequest
 import com.kipgpt.app.data.MailSendNewRequest
@@ -419,6 +423,18 @@ fun MailScreen(
             apiClient = apiClient,
             activeAccountId = activeAccountId.value,
             onBack = { selectedMail.value = null },
+            onReadStateChanged = { mailId, unread ->
+                val idx = mails.indexOfFirst { it.id == mailId }
+                if (idx >= 0) {
+                    mails[idx] = mails[idx].copy(unread = unread)
+                }
+                selectedMail.value = selectedMail.value?.let {
+                    if (it.id == mailId) it.copy(unread = unread) else it
+                }
+                if (!unread && selectedFolder.value == "unread") {
+                    mails.removeAll { it.id == mailId }
+                }
+            },
             modifier = modifier,
         )
         return
@@ -590,6 +606,8 @@ private fun MailRow(mail: MailItem, onClick: () -> Unit) {
     val senderName = formatSenderName(mail)
     val senderEmail = formatSenderEmail(mail)
     val senderInitial = senderName.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
+    val titleWeight = if (mail.unread) FontWeight.Bold else FontWeight.SemiBold
+    val subjectWeight = if (mail.unread) FontWeight.SemiBold else FontWeight.Medium
 
     Row(
         modifier = Modifier
@@ -622,7 +640,7 @@ private fun MailRow(mail: MailItem, onClick: () -> Unit) {
                 Column(Modifier.weight(1f)) {
                     Text(
                         senderName,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = titleWeight,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.titleSmall,
@@ -636,6 +654,15 @@ private fun MailRow(mail: MailItem, onClick: () -> Unit) {
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
+                }
+                if (mail.unread) {
+                    Box(
+                        modifier = Modifier
+                            .padding(end = 6.dp)
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary),
+                    )
                 }
                 if (mail.starred) {
                     Icon(
@@ -653,7 +680,7 @@ private fun MailRow(mail: MailItem, onClick: () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     mail.subject.ifBlank { "(Konu yok)" },
-                    fontWeight = FontWeight.Medium,
+                    fontWeight = subjectWeight,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false),
@@ -706,6 +733,7 @@ fun MailDetailScreen(
     apiClient: ApiClient,
     activeAccountId: String? = null,
     onBack: () -> Unit,
+    onReadStateChanged: (mailId: String, unread: Boolean) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -848,6 +876,22 @@ fun MailDetailScreen(
             summary.value = null
             htmlBody.value = ""
             libraryAttachments.value = emptyList()
+            if (full.unread || mail.unread) {
+                try {
+                    val markFolder = if (folder == "unread") "inbox" else folder
+                    apiClient.api.markMailRead(
+                        MarkMailReadRequest(
+                            mail_id = full.id.ifBlank { mail.id },
+                            folder = markFolder,
+                            account = activeAccountId,
+                        )
+                    )
+                    mailState.value = full.copy(unread = false)
+                    onReadStateChanged(full.id.ifBlank { mail.id }, false)
+                } catch (_: Exception) {
+                    // Okundu işareti başarısız olsa da detay gösterilsin
+                }
+            }
         } catch (e: Exception) {
             snackbar.showSnackbar(e.message ?: "Mail yüklenemedi")
         } finally {
@@ -1007,6 +1051,50 @@ fun MailDetailScreen(
                     }
                 },
                 actions = {
+                    val markFolder = if (folder == "unread") "inbox" else folder
+                    IconButton(
+                        onClick = {
+                            scope.launch {
+                                try {
+                                    if (mailState.value.unread) {
+                                        apiClient.api.markMailRead(
+                                            MarkMailReadRequest(
+                                                mail_id = mailState.value.id,
+                                                folder = markFolder,
+                                                account = activeAccountId,
+                                            ),
+                                        )
+                                        mailState.value = mailState.value.copy(unread = false)
+                                        onReadStateChanged(mailState.value.id, false)
+                                        snackbar.showSnackbar("Okundu olarak işaretlendi")
+                                    } else {
+                                        apiClient.api.markMailUnread(
+                                            MarkMailUnreadRequest(
+                                                mail_id = mailState.value.id,
+                                                folder = markFolder,
+                                                account = activeAccountId,
+                                            ),
+                                        )
+                                        mailState.value = mailState.value.copy(unread = true)
+                                        onReadStateChanged(mailState.value.id, true)
+                                        snackbar.showSnackbar("Okunmadı olarak işaretlendi")
+                                    }
+                                } catch (e: Exception) {
+                                    snackbar.showSnackbar(e.message ?: "İşaretleme başarısız")
+                                }
+                            }
+                        },
+                        enabled = !detailLoading.value && mailState.value.id.isNotBlank(),
+                    ) {
+                        Icon(
+                            if (mailState.value.unread) Icons.Default.MarkEmailRead else Icons.Default.MarkEmailUnread,
+                            contentDescription = if (mailState.value.unread) {
+                                "Okundu işaretle"
+                            } else {
+                                "Okunmadı işaretle"
+                            },
+                        )
+                    }
                     if (speechHelper.isSpeakAvailable()) {
                         IconButton(onClick = {
                             if (speechHelper.isSpeaking()) {

@@ -644,6 +644,7 @@ def api_mail_list(user_id):
             settings=settings,
             filter_spam=True,
             search=search,
+            user_id=user_id,
         )
         from services.gmail_api import is_gmail_api_config
         if search and not is_gmail_api_config(mail_config):
@@ -689,6 +690,76 @@ def api_mail_detail(user_id):
         return jsonify({"error": "Mail bulunamadı."}), 404
 
     return jsonify(_serialize_mail(mail))
+
+
+@mobile_api_bp.route("/mail/mark-read", methods=["POST"])
+@require_api_user
+def api_mail_mark_read(user_id):
+    user = find_user_by_id(user_id)
+    if not user:
+        return jsonify({"error": "Kullanıcı bulunamadı."}), 404
+
+    payload = request.get_json(silent=True) or {}
+    mail_ids = payload.get("mail_ids") or []
+    if isinstance(mail_ids, str):
+        mail_ids = [part.strip() for part in mail_ids.split(",") if part.strip()]
+    single = (payload.get("mail_id") or request.args.get("mail_id") or "").strip()
+    if single and single not in mail_ids:
+        mail_ids.append(single)
+
+    folder = (payload.get("folder") or request.args.get("folder") or "inbox").strip() or "inbox"
+    account_id = (payload.get("account") or request.args.get("account") or "").strip() or None
+
+    mail_config, active_account, _settings = _mail_context(user, account_id)
+    if account_id and not active_account:
+        return jsonify({"error": "Mail hesabı bulunamadı."}), 404
+    if not mail_config:
+        return jsonify({"error": "Mail hesabı bağlı değil."}), 400
+
+    try:
+        from mail import mark_mails_as_read
+        from services.mail_ui import get_imap_folder_name
+
+        imap_folder = get_imap_folder_name(folder, mail_config)
+        marked = mark_mails_as_read(mail_config, imap_folder, mail_ids)
+        return jsonify({"ok": True, "marked": marked})
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+
+@mobile_api_bp.route("/mail/mark-unread", methods=["POST"])
+@require_api_user
+def api_mail_mark_unread(user_id):
+    user = find_user_by_id(user_id)
+    if not user:
+        return jsonify({"error": "Kullanıcı bulunamadı."}), 404
+
+    payload = request.get_json(silent=True) or {}
+    mail_ids = payload.get("mail_ids") or []
+    if isinstance(mail_ids, str):
+        mail_ids = [part.strip() for part in mail_ids.split(",") if part.strip()]
+    single = (payload.get("mail_id") or request.args.get("mail_id") or "").strip()
+    if single and single not in mail_ids:
+        mail_ids.append(single)
+
+    folder = (payload.get("folder") or request.args.get("folder") or "inbox").strip() or "inbox"
+    account_id = (payload.get("account") or request.args.get("account") or "").strip() or None
+
+    mail_config, active_account, _settings = _mail_context(user, account_id)
+    if account_id and not active_account:
+        return jsonify({"error": "Mail hesabı bulunamadı."}), 404
+    if not mail_config:
+        return jsonify({"error": "Mail hesabı bağlı değil."}), 400
+
+    try:
+        from mail import mark_mails_as_unread
+        from services.mail_ui import get_imap_folder_name
+
+        imap_folder = get_imap_folder_name(folder, mail_config)
+        marked = mark_mails_as_unread(mail_config, imap_folder, mail_ids)
+        return jsonify({"ok": True, "marked": marked})
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
 
 
 @mobile_api_bp.route("/mail/attachment", methods=["GET"])

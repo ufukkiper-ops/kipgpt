@@ -626,28 +626,38 @@ def move_mails_to_folder(config, source_folder, mail_ids, dest_candidates, expan
     return moved, errors
 
 
-def filter_spam_from_inbox(config, mailler, settings=None):
+def filter_spam_from_inbox(config, mailler, settings=None, user_id=None):
     from services.spam_service import identify_spam_mails
+    from services.mail_settings import add_spam_exempt_ids, parse_id_list
 
     settings = settings or {}
-    if not settings.get("auto_spam_filter", True):
+    if not settings.get("auto_spam_filter", False):
         return mailler, 0
 
-    spam_mails = identify_spam_mails(mailler, settings)
+    exempt = set(parse_id_list(settings.get("spam_exempt_ids")))
+
+    def _is_exempt(mail):
+        mail_id = str(mail.get("id") or "").strip()
+        message_id = str(mail.get("message_id") or "").strip()
+        return (mail_id and mail_id in exempt) or (message_id and message_id in exempt)
+
+    candidates = [m for m in mailler if not _is_exempt(m)]
+    spam_mails = identify_spam_mails(candidates, settings)
     if not spam_mails:
         return mailler, 0
 
-    if not settings.get("spam_move_to_folder", True):
+    if not settings.get("spam_move_to_folder", False):
         spam_ids = {m["id"] for m in spam_mails}
         clean = [m for m in mailler if m["id"] not in spam_ids]
         return clean, 0
 
     moved = 0
+    spam_ids = [item["id"] for item in spam_mails]
     try:
         moved, errors = move_mails_to_folder(
             config,
             "INBOX",
-            [item["id"] for item in spam_mails],
+            spam_ids,
             FOLDER_CANDIDATES["spam"],
             expand_threads=False,
         )
@@ -656,8 +666,24 @@ def filter_spam_from_inbox(config, mailler, settings=None):
     except Exception as e:
         print("SPAM TAŞIMA HATASI:", e)
 
-    spam_ids = {m["id"] for m in spam_mails}
-    clean = [m for m in mailler if m["id"] not in spam_ids]
+    # Bir kez otomatik taşınan mail → kullanıcı geri alırsa tekrar spam olmasın
+    # IMAP UID klasör değişince değişir; Message-ID kalıcı kimliktir.
+    if user_id and spam_mails:
+        try:
+            exempt_keys = []
+            for item in spam_mails:
+                mid = str(item.get("id") or "").strip()
+                msgid = str(item.get("message_id") or "").strip()
+                if mid:
+                    exempt_keys.append(mid)
+                if msgid:
+                    exempt_keys.append(msgid)
+            add_spam_exempt_ids(user_id, exempt_keys)
+        except Exception as e:
+            print("SPAM EXEMPT KAYIT HATASI:", e)
+
+    spam_id_set = set(spam_ids)
+    clean = [m for m in mailler if m["id"] not in spam_id_set]
     return clean, moved
 
 
@@ -701,7 +727,7 @@ def get_first_available_folder(config, folder_names, count=20):
     return []
 
 
-def get_inbox(config, count=20, filter_spam=True, settings=None):
+def get_inbox(config, count=20, filter_spam=True, settings=None, user_id=None):
     settings = settings or {}
     display_count = settings.get("inbox_fetch_count", count)
     sweep_count = max(display_count, 50) if filter_spam else display_count
@@ -710,7 +736,7 @@ def get_inbox(config, count=20, filter_spam=True, settings=None):
     if not filter_spam:
         return mailler[:display_count], 0
 
-    clean, moved = filter_spam_from_inbox(config, mailler, settings)
+    clean, moved = filter_spam_from_inbox(config, mailler, settings, user_id=user_id)
     return clean[:display_count], moved
 
 
@@ -751,6 +777,35 @@ def mark_mails_as_read(config, folder, mail_ids):
         for mail_id in ids:
             try:
                 status, _ = mail.uid("store", _mail_id_bytes(mail_id), "+FLAGS", "(\\Seen)")
+                if status == "OK":
+                    marked += 1
+            except Exception:
+                continue
+    finally:
+        try:
+            mail.logout()
+        except Exception:
+            pass
+    return marked
+
+
+def mark_mails_as_unread(config, folder, mail_ids):
+    """IMAP: \\Seen kaldır. Gmail API: UNREAD etiketi ekle."""
+    from services.gmail_api import is_gmail_api_config, mark_mails_as_unread as gmail_mark_unread
+
+    ids = [str(mid).strip() for mid in (mail_ids or []) if str(mid).strip()]
+    if not ids:
+        return 0
+
+    if is_gmail_api_config(config):
+        return gmail_mark_unread(config, ids)
+
+    mail = connect_mail(config, folder or "INBOX")
+    marked = 0
+    try:
+        for mail_id in ids:
+            try:
+                status, _ = mail.uid("store", _mail_id_bytes(mail_id), "-FLAGS", "(\\Seen)")
                 if status == "OK":
                     marked += 1
             except Exception:

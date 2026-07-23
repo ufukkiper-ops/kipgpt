@@ -101,6 +101,12 @@ interface KipGptApi {
         @Query("account") account: String? = null,
     ): MailItem
 
+    @POST("mail/mark-read")
+    suspend fun markMailRead(@Body body: MarkMailReadRequest): MarkMailReadResponse
+
+    @POST("mail/mark-unread")
+    suspend fun markMailUnread(@Body body: MarkMailUnreadRequest): MarkMailUnreadResponse
+
     @GET("mail/attachment")
     @Streaming
     suspend fun downloadAttachment(

@@ -279,18 +279,6 @@ def get_mail(config, mail_id: str):
         parsed["unread"] = "UNREAD" in labels
         parsed["starred"] = "STARRED" in labels
         parsed["label_ids"] = list(labels)
-
-        # Okundu işaretle
-        if "UNREAD" in labels:
-            try:
-                service.users().messages().modify(
-                    userId="me",
-                    id=mail_id,
-                    body={"removeLabelIds": ["UNREAD"]},
-                ).execute()
-                parsed["unread"] = False
-            except Exception:
-                pass
         return parsed
     except GmailApiError:
         raise
@@ -371,6 +359,31 @@ def mark_mails_as_read(config, mail_ids):
                     userId="me",
                     id=mail_id,
                     body={"removeLabelIds": ["UNREAD"]},
+                ).execute()
+                marked += 1
+            except Exception:
+                continue
+        return marked
+    except GmailApiError:
+        raise
+    except Exception as exc:
+        raise GmailApiError(_user_friendly_error(exc)) from exc
+
+
+def mark_mails_as_unread(config, mail_ids):
+    """Gmail API: UNREAD etiketi ekle."""
+    ids = [str(mid).strip() for mid in (mail_ids or []) if str(mid).strip()]
+    if not ids:
+        return 0
+    try:
+        service = build_gmail_service(config)
+        marked = 0
+        for mail_id in ids:
+            try:
+                service.users().messages().modify(
+                    userId="me",
+                    id=mail_id,
+                    body={"addLabelIds": ["UNREAD"]},
                 ).execute()
                 marked += 1
             except Exception:
