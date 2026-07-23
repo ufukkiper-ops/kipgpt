@@ -642,7 +642,7 @@ def api_mail_list(user_id):
             mail_config,
             count=mobile_count,
             settings=settings,
-            filter_spam=True,
+            filter_spam=False,
             search=search,
             user_id=user_id,
         )

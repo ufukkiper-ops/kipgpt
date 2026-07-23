@@ -62,7 +62,7 @@ FOLDER_IMAP = {
 }
 
 
-def load_folder_mails(folder, mail_config, count=20, settings=None, filter_spam=True, search="", user_id=None):
+def load_folder_mails(folder, mail_config, count=20, settings=None, filter_spam=False, search="", user_id=None):
     meta = {}
     settings = settings or {}
 
@@ -292,6 +292,8 @@ def _move_mails_to_inbox(form, mail_config, source_folder_key):
         raise Exception(errors[0] if errors else "Mail taşınamadı.")
 
     message_ids = []
+    from services.mail_settings import mail_spam_fingerprint
+
     for mail in folder_mails:
         mail_id = str(mail.get("id") or "").strip()
         thread_ids = {str(tid).strip() for tid in (mail.get("thread_ids") or []) if str(tid).strip()}
@@ -301,6 +303,9 @@ def _move_mails_to_inbox(form, mail_config, source_folder_key):
                 message_ids.append(msgid)
             if mail_id:
                 message_ids.append(mail_id)
+            fp = mail_spam_fingerprint(mail)
+            if fp:
+                message_ids.append(fp)
 
     return moved, errors, senders, message_ids
 

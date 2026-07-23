@@ -1220,6 +1220,68 @@ fun MailDetailScreen(
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Medium,
             )
+            Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                val markFolder = if (folder == "unread") "inbox" else folder
+                OutlinedButton(
+                    onClick = {
+                        scope.launch {
+                            try {
+                                apiClient.api.markMailRead(
+                                    MarkMailReadRequest(
+                                        mail_id = mailState.value.id,
+                                        folder = markFolder,
+                                        account = activeAccountId,
+                                    ),
+                                )
+                                mailState.value = mailState.value.copy(unread = false)
+                                onReadStateChanged(mailState.value.id, false)
+                                snackbar.showSnackbar("Okundu olarak işaretlendi")
+                            } catch (e: Exception) {
+                                snackbar.showSnackbar(e.message ?: "İşaretleme başarısız")
+                            }
+                        }
+                    },
+                    enabled = !detailLoading.value && mailState.value.id.isNotBlank(),
+                ) {
+                    Icon(
+                        Icons.Default.MarkEmailRead,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text("Okundu işaretle")
+                }
+                OutlinedButton(
+                    onClick = {
+                        scope.launch {
+                            try {
+                                apiClient.api.markMailUnread(
+                                    MarkMailUnreadRequest(
+                                        mail_id = mailState.value.id,
+                                        folder = markFolder,
+                                        account = activeAccountId,
+                                    ),
+                                )
+                                mailState.value = mailState.value.copy(unread = true)
+                                onReadStateChanged(mailState.value.id, true)
+                                snackbar.showSnackbar("Okunmadı olarak işaretlendi")
+                            } catch (e: Exception) {
+                                snackbar.showSnackbar(e.message ?: "İşaretleme başarısız")
+                            }
+                        }
+                    },
+                    enabled = !detailLoading.value && mailState.value.id.isNotBlank(),
+                ) {
+                    Icon(
+                        Icons.Default.MarkEmailUnread,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text("Okunmadı")
+                }
+            }
             Spacer(Modifier.height(8.dp))
 
             Text(

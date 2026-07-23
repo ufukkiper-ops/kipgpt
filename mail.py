@@ -628,10 +628,13 @@ def move_mails_to_folder(config, source_folder, mail_ids, dest_candidates, expan
 
 def filter_spam_from_inbox(config, mailler, settings=None, user_id=None):
     from services.spam_service import identify_spam_mails
-    from services.mail_settings import add_spam_exempt_ids, parse_id_list
+    from services.mail_settings import add_spam_exempt_ids, mail_spam_fingerprint, parse_id_list
 
     settings = settings or {}
+    # Hem filtre hem taşıma açık değilse hiçbir şey yapma
     if not settings.get("auto_spam_filter", False):
+        return mailler, 0
+    if not settings.get("spam_move_to_folder", False):
         return mailler, 0
 
     exempt = set(parse_id_list(settings.get("spam_exempt_ids")))
@@ -639,17 +642,17 @@ def filter_spam_from_inbox(config, mailler, settings=None, user_id=None):
     def _is_exempt(mail):
         mail_id = str(mail.get("id") or "").strip()
         message_id = str(mail.get("message_id") or "").strip()
-        return (mail_id and mail_id in exempt) or (message_id and message_id in exempt)
+        fingerprint = mail_spam_fingerprint(mail)
+        return (
+            (mail_id and mail_id in exempt)
+            or (message_id and message_id in exempt)
+            or (fingerprint and fingerprint in exempt)
+        )
 
     candidates = [m for m in mailler if not _is_exempt(m)]
     spam_mails = identify_spam_mails(candidates, settings)
     if not spam_mails:
         return mailler, 0
-
-    if not settings.get("spam_move_to_folder", False):
-        spam_ids = {m["id"] for m in spam_mails}
-        clean = [m for m in mailler if m["id"] not in spam_ids]
-        return clean, 0
 
     moved = 0
     spam_ids = [item["id"] for item in spam_mails]
@@ -667,17 +670,19 @@ def filter_spam_from_inbox(config, mailler, settings=None, user_id=None):
         print("SPAM TAŞIMA HATASI:", e)
 
     # Bir kez otomatik taşınan mail → kullanıcı geri alırsa tekrar spam olmasın
-    # IMAP UID klasör değişince değişir; Message-ID kalıcı kimliktir.
     if user_id and spam_mails:
         try:
             exempt_keys = []
             for item in spam_mails:
                 mid = str(item.get("id") or "").strip()
                 msgid = str(item.get("message_id") or "").strip()
+                fp = mail_spam_fingerprint(item)
                 if mid:
                     exempt_keys.append(mid)
                 if msgid:
                     exempt_keys.append(msgid)
+                if fp:
+                    exempt_keys.append(fp)
             add_spam_exempt_ids(user_id, exempt_keys)
         except Exception as e:
             print("SPAM EXEMPT KAYIT HATASI:", e)

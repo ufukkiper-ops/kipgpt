@@ -1575,6 +1575,34 @@ body.dialog-open .account-remove-form {
     background: #fff;
 }
 
+.toolbar-text-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 34px;
+    padding: 0 10px;
+    border: 1px solid #dadce0;
+    border-radius: 18px;
+    background: #f8f9fa;
+    color: #3c4043;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+    margin: 0 2px;
+}
+
+.toolbar-text-btn .material-icons-outlined {
+    font-size: 18px;
+}
+
+.toolbar-text-btn:hover {
+    background: #e8f0fe;
+    border-color: #aecbfa;
+    color: #1a73e8;
+}
+
 .toolbar-divider {
     width: 1px;
     height: 20px;

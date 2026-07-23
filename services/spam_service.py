@@ -212,7 +212,7 @@ def identify_spam_mails(mails, settings=None):
     if not mails:
         return []
 
-    if settings and not settings.get("auto_spam_filter", True):
+    if not settings or not settings.get("auto_spam_filter", False):
         return []
 
     classification = classify_spam_batch(mails, settings)

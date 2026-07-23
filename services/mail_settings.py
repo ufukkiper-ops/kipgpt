@@ -12,6 +12,7 @@ DEFAULT_MAIL_SETTINGS = {
     "blocked_senders": "",
     "spam_exempt_ids": "",
     "inbox_fetch_count": 150,
+    "_kip_spam_v3": True,
 }
 
 SENSITIVITY_PRESETS = {
@@ -55,10 +56,39 @@ def _coerce_bool(value, default=False):
 
 
 def get_mail_settings(user):
-    raw = (user or {}).get("mail_settings") or {}
+    raw = dict((user or {}).get("mail_settings") or {})
+
+    # Eski hesaplarda açık kalan otomatik spam taşımayı bir kez kapat.
+    # (Spam'den çıkarılan mailler tekrar spam'e gidiyordu.)
+    if not raw.get("_kip_spam_v3"):
+        raw["auto_spam_filter"] = False
+        raw["spam_move_to_folder"] = False
+        raw["spam_use_ai"] = False
+        raw["_kip_spam_v3"] = True
+        user_id = ((user or {}).get("email") or (user or {}).get("username") or "").strip()
+        if user_id:
+            try:
+                users = load_users()
+                for index, item in enumerate(users):
+                    uid = (item.get("email") or item.get("username") or "").strip()
+                    if uid.lower() == user_id.lower():
+                        merged = dict(item.get("mail_settings") or {})
+                        merged["auto_spam_filter"] = False
+                        merged["spam_move_to_folder"] = False
+                        merged["spam_use_ai"] = False
+                        merged["_kip_spam_v3"] = True
+                        if "spam_exempt_ids" not in merged:
+                            merged["spam_exempt_ids"] = raw.get("spam_exempt_ids") or ""
+                        users[index]["mail_settings"] = merged
+                        save_users(users)
+                        raw = merged
+                        break
+            except Exception as exc:
+                print("SPAM AYAR MIGRATION HATASI:", exc)
+
     settings = {**DEFAULT_MAIL_SETTINGS, **raw}
 
-    # Varsayılan: otomatik spam taşıma kapalı (her girişte yeniden spam olmasın)
+    # Varsayılan: otomatik spam taşıma kapalı
     settings["auto_spam_filter"] = _coerce_bool(settings.get("auto_spam_filter"), False)
     settings["spam_move_to_folder"] = _coerce_bool(settings.get("spam_move_to_folder"), False)
     settings["spam_use_ai"] = _coerce_bool(settings.get("spam_use_ai"), False)
@@ -94,6 +124,23 @@ def parse_id_list(text):
     return items
 
 
+def mail_spam_fingerprint(mail_or_sender, subject=None):
+    """Gönderen+konu parmak izi — IMAP UID değişse de aynı maili tanır."""
+    if isinstance(mail_or_sender, dict):
+        sender = mail_or_sender.get("sender") or mail_or_sender.get("sender_display") or ""
+        subject = mail_or_sender.get("subject") or ""
+    else:
+        sender = mail_or_sender or ""
+        subject = subject or ""
+    email = normalize_sender_email(sender)
+    subj = re.sub(r"\s+", " ", str(subject or "").strip().lower())
+    # Re: / Fwd: öneklerini sadeleştir
+    subj = re.sub(r"^(re|fw|fwd)\s*:\s*", "", subj, flags=re.I)
+    if not email and not subj:
+        return ""
+    return f"fp:{email}|{subj}"[:300]
+
+
 def add_spam_exempt_ids(user_id, mail_ids):
     """Bir kez işlenen / spam'dan çıkarılan mailleri tekrar otomatik spam'e alma."""
     user_id = (user_id or "").strip()
@@ -107,8 +154,10 @@ def add_spam_exempt_ids(user_id, mail_ids):
 
     users = load_users()
     added = []
+    needle = user_id.lower()
     for index, user in enumerate(users):
-        if (user.get("email") or user.get("username") or "").strip() != user_id:
+        uid = (user.get("email") or user.get("username") or "").strip()
+        if uid.lower() != needle:
             continue
 
         raw = dict(user.get("mail_settings") or {})
@@ -233,17 +282,20 @@ def save_mail_settings(user_id, form):
         "trusted_senders": form.get("trusted_senders", "").strip(),
         "blocked_senders": form.get("blocked_senders", "").strip(),
         "inbox_fetch_count": fetch_count,
+        "_kip_spam_v3": True,
     }
 
     users = load_users()
     for index, user in enumerate(users):
-        if (user.get("email") or user.get("username") or "").strip() == user_id:
-            existing = dict(user.get("mail_settings") or {})
-            # Formda olmayan kalıcı alanları koru (spam exempt vb.)
-            if "spam_exempt_ids" in existing and "spam_exempt_ids" not in settings:
-                settings["spam_exempt_ids"] = existing.get("spam_exempt_ids") or ""
-            users[index]["mail_settings"] = settings
-            save_users(users)
-            return get_mail_settings(users[index])
+        uid = (user.get("email") or user.get("username") or "").strip()
+        if uid.lower() != user_id.lower():
+            continue
+        existing = dict(user.get("mail_settings") or {})
+        # Formda olmayan kalıcı alanları koru (spam exempt vb.)
+        if "spam_exempt_ids" in existing and "spam_exempt_ids" not in settings:
+            settings["spam_exempt_ids"] = existing.get("spam_exempt_ids") or ""
+        users[index]["mail_settings"] = settings
+        save_users(users)
+        return get_mail_settings(users[index])
 
     raise ValueError("Kullanıcı bulunamadı.")
