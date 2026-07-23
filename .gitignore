@@ -23,3 +23,7 @@ tunnel/config.yml
 tunnel/current_url.txt
 *.apk
 .cloudflared/
+desktop.ini
+**/__pycache__/
+*.tmp
+android/inst_user_settings.tmp
