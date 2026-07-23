@@ -1,9 +1,8 @@
 import json
-import os
 import hashlib
 import re
 
-USERS_FILE = "users.json"
+from services.data_paths import ensure_data_dir, users_file_path
 DEV_QUICK_USERNAME = "q"
 DEV_QUICK_PASSWORD = "q"
 
@@ -89,20 +88,26 @@ def authenticate_local_user(identifier, password):
     return user
 
 
+def _users_path():
+    ensure_data_dir()
+    return users_file_path()
+
+
 def ensure_users_file():
-    if not os.path.exists(USERS_FILE):
-        with open(USERS_FILE, "w", encoding="utf-8") as f:
+    path = _users_path()
+    if not path.exists():
+        with open(path, "w", encoding="utf-8") as f:
             json.dump([], f, ensure_ascii=False, indent=2)
 
 
 def load_users():
     ensure_users_file()
-    with open(USERS_FILE, "r", encoding="utf-8") as f:
+    with open(_users_path(), "r", encoding="utf-8") as f:
         return json.load(f)
 
 
 def save_users(users):
-    with open(USERS_FILE, "w", encoding="utf-8") as f:
+    with open(_users_path(), "w", encoding="utf-8") as f:
         json.dump(users, f, ensure_ascii=False, indent=2)
 
 

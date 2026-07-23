@@ -1,0 +1,12 @@
+{
+  "java.jdt.ls.java.home": "C:\\Program Files\\Android\\Android Studio\\jbr",
+  "java.import.gradle.java.home": "C:\\Program Files\\Android\\Android Studio\\jbr",
+  "java.configuration.updateBuildConfiguration": "automatic",
+  "python.defaultInterpreterPath": "py",
+  "python.analysis.typeCheckingMode": "basic",
+  "python.analysis.extraPaths": ["${workspaceFolder}"],
+  "python.analysis.autoSearchPaths": true,
+  "[kotlin]": {
+    "editor.formatOnSave": false
+  }
+}

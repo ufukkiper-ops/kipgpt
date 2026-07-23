@@ -1,0 +1,16 @@
+# Sabit Cloudflare Tunnel örneği
+# 1) cloudflared tunnel create kipgpt
+# 2) credentials-file yolunu kendi UUID json dosyanla değiştir
+# 3) ingress hostname'i kendi domaininle değiştir
+# 4) Bu dosyayı config.yml olarak kaydet
+#
+# Windows credentials genelde:
+#   C:\Users\SENIN_KULLANICI\.cloudflared\<TUNNEL-UUID>.json
+
+tunnel: KIPGPT_TUNNEL_UUID_BURAYA
+credentials-file: C:\Users\info\.cloudflared\KIPGPT_TUNNEL_UUID_BURAYA.json
+
+ingress:
+  - hostname: kipgpt.ornek-domain.com
+    service: http://127.0.0.1:5001
+  - service: http_status:404

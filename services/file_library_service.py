@@ -13,9 +13,12 @@ from services.file_service import (
     guess_mimetype,
     safe_filename,
 )
+from services.data_paths import user_files_root
 from users import find_user_by_id, load_users, save_users
 
-LIBRARY_ROOT = Path(__file__).resolve().parent.parent / "user_files"
+
+def _library_root() -> Path:
+    return user_files_root()
 
 
 def _now_iso():
@@ -29,7 +32,7 @@ def _user_key(user):
 def _safe_user_dir(user):
     key = _user_key(user).lower() or "anon"
     safe = re.sub(r"[^a-z0-9._-]+", "_", key)[:80] or "anon"
-    path = LIBRARY_ROOT / safe
+    path = _library_root() / safe
     path.mkdir(parents=True, exist_ok=True)
     return path
 

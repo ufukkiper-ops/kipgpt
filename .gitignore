@@ -19,4 +19,7 @@ desktop/build/
 dist/
 build/
 *.spec.bak
-
+tunnel/config.yml
+tunnel/current_url.txt
+*.apk
+.cloudflared/

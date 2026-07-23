@@ -77,7 +77,16 @@ fun LoginScreen(
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                "Veriler bilgisayarınızdaki sunucuda kalır.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            TextButton(onClick = onOpenSettings) {
+                Text("Sunucu ayarları (PC IP)")
+            }
+            Spacer(modifier = Modifier.height(16.dp))
 
             OutlinedTextField(
                 value = email.value,
@@ -156,10 +165,6 @@ fun LoginScreen(
 
             TextButton(onClick = { isRegister.value = !isRegister.value }) {
                 Text(if (isRegister.value) "Zaten hesabım var" else "Yeni hesap oluştur")
-            }
-
-            TextButton(onClick = onOpenSettings) {
-                Text("Sunucu ayarları")
             }
         }
     }

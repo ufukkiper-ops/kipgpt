@@ -2,14 +2,20 @@ services:
   - type: web
     name: kip-asistan
     runtime: python
-    plan: free
+    plan: starter
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120
+    disk:
+      name: kipgpt-data
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
       - key: PYTHON_VERSION
         value: "3.12.8"
       - key: RENDER
         value: "true"
+      - key: KIPGPT_DATA_DIR
+        value: /var/data
       - key: FLASK_SECRET_KEY
         generateValue: true
       - key: PUBLIC_BASE_URL

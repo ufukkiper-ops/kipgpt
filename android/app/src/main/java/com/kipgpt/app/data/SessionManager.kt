@@ -16,14 +16,26 @@ class SessionManager(private val context: Context) {
         private val KEY_BASE_URL = stringPreferencesKey("base_url")
         private val KEY_USER_EMAIL = stringPreferencesKey("user_email")
         private val KEY_MAIL_ACCOUNT = stringPreferencesKey("active_mail_account_id")
-        const val DEFAULT_BASE_URL = "https://kip-asistan.onrender.com/api/v1/"
         const val EMULATOR_BASE_URL = "http://10.0.2.2:5001/api/v1/"
         const val RENDER_BASE_URL = "https://kip-asistan.onrender.com/api/v1/"
-        const val LAN_IP_PLACEHOLDER = "10.252.49.1"
+        /** start.bat LAN örneği */
+        const val LAN_IP_PLACEHOLDER = "192.168.10.153"
+        /**
+         * start_public.bat / Cloudflare Tunnel adresi.
+         * Tunnel yeniden açılırsa bu URL değişebilir; tunnel/current_url.txt ile güncelle.
+         */
+        const val PUBLIC_TUNNEL_BASE_URL =
+            "https://antiques-flux-undo-libraries.trycloudflare.com/api/v1/"
+
+        val DEFAULT_BASE_URL: String = PUBLIC_TUNNEL_BASE_URL
 
         fun lanBaseUrl(ip: String = LAN_IP_PLACEHOLDER): String {
             val clean = ip.trim().trimEnd('/')
             return "http://$clean:5001/api/v1/"
+        }
+
+        fun isPlaceholderLanUrl(url: String): Boolean {
+            return url.contains(LAN_IP_PLACEHOLDER) && !url.contains("trycloudflare.com")
         }
     }
 
@@ -78,6 +90,21 @@ class SessionManager(private val context: Context) {
         val normalized = if (url.endsWith("/")) url else "$url/"
         context.dataStore.edit { prefs ->
             prefs[KEY_BASE_URL] = normalized
+        }
+    }
+
+    /** Yerel LAN / eski Render yerine PC tünel adresini varsayılan yap. */
+    suspend fun applyLocalServerDefaultIfNeeded() {
+        context.dataStore.edit { prefs ->
+            val saved = prefs[KEY_BASE_URL]
+            val shouldReplace = saved.isNullOrBlank() ||
+                saved == RENDER_BASE_URL ||
+                saved.contains("10.252.49.1") ||
+                saved.contains(LAN_IP_PLACEHOLDER) ||
+                (saved.startsWith("http://") && saved.contains(":5001"))
+            if (shouldReplace) {
+                prefs[KEY_BASE_URL] = PUBLIC_TUNNEL_BASE_URL
+            }
         }
     }
 }

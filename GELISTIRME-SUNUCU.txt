@@ -1,0 +1,47 @@
+KipGPT — Geliştirme PC ↔ Sunucu PC
+====================================
+
+Roller
+------
+• Geliştirme PC  → kod yaz, dene (start.bat), GitHub'a gönder (gonder.bat)
+• Sunucu PC      → start_public.bat + tünel, veriler burada, guncelle.bat ile çek
+
+Bu makine (sunucu) dosyaları
+----------------------------
+  start_public.bat     Dışarıdan erişim (tünel)
+  guncelle.bat         git pull + sunucuyu yeniden başlat
+  ilk-kurulum-git.bat  İlk kez Git + GitHub bağlama
+  gonder.bat           Geliştirme PC'de: commit + push
+
+Kurulum sırası (bir kez)
+------------------------
+1) Bu (sunucu) PC:
+   - winget install Git.Git   (yoksa)
+   - https://github.com/new  → boş repo oluştur (README ekleme)
+   - ilk-kurulum-git.bat     → repo URL'sini yapıştır → push
+
+2) Geliştirme PC:
+   - Git kur
+   - git clone https://github.com/KULLANICI/kipgpt.git
+   - cd kipgpt
+   - py -3 -m venv .venv
+   - .venv\Scripts\pip install -r requirements.txt
+   - copy .env.example .env   (kendi anahtarların)
+   - start.bat ile yerelde dene
+   - Değişince: gonder.bat
+
+3) Sunucu PC'de her güncellemede:
+   - guncelle.bat
+   - users.json / data.json / .env DOKUNULMAZ (git'te yok)
+
+Önemli
+------
+• .env, users.json, data.json, user_files GitHub'a GİTMEZ
+• Sunucu PC'deki hesaplar kalır
+• Geçici tünel URL değişirse: tunnel adresini telefona / APK'ya yaz
+• Sabit tünel için: tunnel\SETUP.txt
+
+Android APK
+-----------
+Geliştirme PC'de derle → telefona yükle.
+Sunucu adresi = sunucu PC tüneli (SessionManager PUBLIC_TUNNEL_BASE_URL).

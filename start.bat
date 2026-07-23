@@ -23,10 +23,16 @@ echo.
 echo Telefondan acmiyorsa: ayni Wi-Fi, Windows Guvenlik Duvari,
 echo veya kurumsal Wi-Fi cihazlar arasi engeli olabilir.
 echo Bu pencereyi kapatmayin.
+echo Veriler bu klasorde kalir: users.json, data.json, user_files\
 echo.
 
 set "PUBLIC_BASE_URL=http://%LAN_IP%:5001"
 if "%LAN_IP%"=="" set "PUBLIC_BASE_URL=http://127.0.0.1:5001"
 
-py -3 app.py
+set "PY=%~dp0.venv\Scripts\python.exe"
+if exist "%PY%" (
+  "%PY%" app.py
+) else (
+  py -3 app.py
+)
 pause

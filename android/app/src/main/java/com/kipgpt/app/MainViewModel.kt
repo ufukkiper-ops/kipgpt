@@ -8,8 +8,10 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.kipgpt.app.data.SessionManager
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 sealed interface AuthState {
     data object Loading : AuthState
@@ -45,6 +47,16 @@ class MainViewModel(
 
     fun closeGuestSettings() {
         showGuestSettings = false
+    }
+
+    init {
+        viewModelScope.launch {
+            sessionManager.applyLocalServerDefaultIfNeeded()
+            val url = sessionManager.baseUrlFlow.first()
+            if (SessionManager.isPlaceholderLanUrl(url)) {
+                showGuestSettings = true
+            }
+        }
     }
 
     suspend fun logout() {

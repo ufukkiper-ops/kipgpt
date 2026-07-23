@@ -12,6 +12,9 @@ load_dotenv(ROOT_DIR / ".env")
 from services.env_setup import bootstrap_google_credentials
 bootstrap_google_credentials()
 
+from services.data_paths import ensure_data_dir
+ensure_data_dir()
+
 # Google OAuth localhost HTTP desteği
 os.environ.setdefault("OAUTHLIB_INSECURE_TRANSPORT", "1")
 os.environ.setdefault("OAUTHLIB_RELAX_TOKEN_SCOPE", "1")

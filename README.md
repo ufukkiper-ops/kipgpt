@@ -69,10 +69,13 @@ OPENAI_API_KEY=sk-...   # AI özet / cevap için
 
 ```bash
 python app.py
-# veya start.bat
+# veya start.bat          → sadece ev Wi‑Fi / bu PC
+# veya start_public.bat   → dışarıdan da (Cloudflare Tunnel, veriler PC'de)
 ```
 
 Aç: `http://127.0.0.1:5001/login` → Mail → **Hesap Ekle** (e-posta + uygulama şifresi)
+
+Dışarıdan erişim ve Store notları: [tunnel/SETUP.txt](tunnel/SETUP.txt)
 
 > Gmail / Outlook / Yahoo OAuth (şifresiz) giriş kapalıdır. Yeniden açmak için `OAUTH_LOGIN_ENABLED=1` ortam değişkenini ekleyin.
 
@@ -87,7 +90,11 @@ Aç: `http://127.0.0.1:5001/login` → Mail → **Hesap Ekle** (e-posta + uygula
    - `GOOGLE_MAIL_REDIRECT_URI=https://kip-asistan.onrender.com/mail/oauth/google/callback`
    - `OPENAI_API_KEY`
 3. Google Console’a **aynı Render redirect URI’lerini** ekle
-4. Kalıcı disk önerilir (`users.json` / `data/` için); yoksa redeploy’da hesaplar silinebilir
+4. **Kalıcı disk zorunlu** (ücretsiz planda disk yok; ~15 dk uyku sonrası `users.json` silinir):
+   - `render.yaml` içinde `disk` + `KIPGPT_DATA_DIR=/var/data` tanımlı
+   - Render Dashboard → servis **Starter** (veya üzeri) + **Persistent Disk** açık olmalı
+   - Environment: `KIPGPT_DATA_DIR=/var/data` (Blueprint ile gelir)
+   - `FLASK_SECRET_KEY` bir kez güçlü değer verin; değişirse şifreli mail token’ları okunamaz
 
 ## Önemli route’lar
 

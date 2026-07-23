@@ -19,6 +19,7 @@ from services.mail_accounts import (
     persist_mail_accounts,
     set_active_account,
 )
+from services.data_paths import ensure_data_dir, oauth_state_file_path
 from users import find_user_by_id, load_users, save_users
 
 # Gmail / Outlook / Yahoo OAuth ile giriş ve yeni hesap bağlama kapalı.
@@ -53,24 +54,28 @@ OAUTH_PROVIDERS = {
 }
 
 _STATE_TTL = 15 * 60
-_ROOT = Path(__file__).resolve().parent.parent
-_STATE_FILE = Path(os.getenv("OAUTH_STATE_FILE") or (_ROOT / "data" / "oauth_states.json"))
 
 
 def _account_id():
     return f"acc_{uuid.uuid4().hex[:8]}"
 
 
+def _state_file() -> Path:
+    ensure_data_dir()
+    return oauth_state_file_path()
+
+
 def _ensure_state_dir():
-    _STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    _state_file().parent.mkdir(parents=True, exist_ok=True)
 
 
 def _load_states() -> dict:
+    path = _state_file()
     _ensure_state_dir()
-    if not _STATE_FILE.exists():
+    if not path.exists():
         return {}
     try:
-        with open(_STATE_FILE, encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             data = json.load(f)
         return data if isinstance(data, dict) else {}
     except Exception:
@@ -78,11 +83,12 @@ def _load_states() -> dict:
 
 
 def _save_states(states: dict) -> None:
+    path = _state_file()
     _ensure_state_dir()
-    tmp = _STATE_FILE.with_suffix(".tmp")
+    tmp = path.with_suffix(".tmp")
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(states, f)
-    tmp.replace(_STATE_FILE)
+    tmp.replace(path)
 
 
 def save_oauth_state(state: str, payload: dict) -> None:

@@ -112,21 +112,17 @@ fun SettingsScreen(
                 value = baseUrl.value,
                 onValueChange = { baseUrl.value = it },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("https://kip-asistan.onrender.com/api/v1/") },
+                placeholder = { Text("http://192.168.1.10:5001/api/v1/") },
                 singleLine = true,
             )
             Spacer(modifier.height(8.dp))
 
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(
-                    selected = baseUrl.value == SessionManager.RENDER_BASE_URL,
-                    onClick = { baseUrl.value = SessionManager.RENDER_BASE_URL },
-                    label = { Text("Render (Canlı)") },
-                )
-                FilterChip(
-                    selected = baseUrl.value == SessionManager.EMULATOR_BASE_URL,
-                    onClick = { baseUrl.value = SessionManager.EMULATOR_BASE_URL },
-                    label = { Text("Emülatör") },
+                    selected = baseUrl.value.contains("trycloudflare.com") ||
+                        baseUrl.value == SessionManager.PUBLIC_TUNNEL_BASE_URL,
+                    onClick = { baseUrl.value = SessionManager.PUBLIC_TUNNEL_BASE_URL },
+                    label = { Text("Dışarı (Tunnel)") },
                 )
                 FilterChip(
                     selected = baseUrl.value.startsWith("http://") &&
@@ -135,13 +131,18 @@ fun SettingsScreen(
                     onClick = {
                         baseUrl.value = SessionManager.lanBaseUrl(SessionManager.LAN_IP_PLACEHOLDER)
                     },
-                    label = { Text("Telefon (LAN IP)") },
+                    label = { Text("Bu PC (LAN)") },
+                )
+                FilterChip(
+                    selected = baseUrl.value == SessionManager.EMULATOR_BASE_URL,
+                    onClick = { baseUrl.value = SessionManager.EMULATOR_BASE_URL },
+                    label = { Text("Emülatör") },
                 )
             }
 
             Spacer(modifier.height(8.dp))
             Text(
-                "Telefon: http://BILGISAYAR_IP:5001/api/v1/ (örnek ${SessionManager.LAN_IP_PLACEHOLDER}). start.bat IP'yi gösterir. Aynı Wi‑Fi gerekir.",
+                "Ev Wi‑Fi: http://PC_IP:5001/api/v1/ (start.bat). Dışarıdan / Store: start_public.bat ile çıkan https://.... adresine /api/v1/ ekleyin. PC açık kalmalı.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

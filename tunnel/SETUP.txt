@@ -1,0 +1,72 @@
+KipGPT — PC sunucu + dışarıdan erişim (Cloudflare Tunnel)
+==========================================================
+
+Ne olur?
+- Sunucu bu PC'de çalışır (veriler users.json / data.json burada kalır)
+- Cloudflare Tunnel ile internetten HTTPS adresi alırsın
+- Telefon / Store uygulaması bu adrese bağlanır
+- PC açık + start_public.bat çalışıyor olmalı
+
+----------------------------------------------------------
+A) Hızlı deneme (geçici adres)
+----------------------------------------------------------
+1. Normal start.bat yerine:  start_public.bat
+2. Pencerede çıkan https://....trycloudflare.com adresini kopyala
+3. Uygulama → Ayarlar → Sunucu:
+     https://....trycloudflare.com/api/v1/
+4. Kaydet → Bağlantıyı test et
+
+Not: Her yeniden açılışta adres DEĞİŞEBİLİR.
+Store'a yüklemeden önce sabit adres (B) şart.
+
+----------------------------------------------------------
+B) Sabit adres (Store / her yerden aynı URL) — önerilen
+----------------------------------------------------------
+1. Ücretsiz hesap: https://dash.cloudflare.com  (kaydol)
+2. PowerShell / CMD:
+     cloudflared tunnel login
+   (Tarayıcıda Cloudflare hesabını onayla)
+
+3. Tunnel oluştur:
+     cloudflared tunnel create kipgpt
+
+4. Cloudflare Dashboard → Zero Trust → Networks → Tunnels
+   veya domain ekle:
+   - Kendi domainin varsa: DNS'te CNAME → tunnel
+   - Domain yoksa: Cloudflare'te ucuz domain al veya
+     "Quick Tunnel" yerine named tunnel + Cloudflare hostname kullan
+
+5. Bu klasörde tunnel\config.yml oluştur (örnek: config.yml.example)
+   credentials-file yolunu cloudflared'ın verdiği JSON ile değiştir.
+
+6. Hostname bağla (örnek kipgpt.senin-domain.com → http://127.0.0.1:5001)
+
+7. start_public.bat artık config.yml görürse sabit tunnel ile açılır.
+
+8. Android uygulamasında varsayılan / ayar:
+     https://kipgpt.senin-domain.com/api/v1/
+
+----------------------------------------------------------
+C) Store'a yükleme
+----------------------------------------------------------
+Google Play (Android):
+- https://play.google.com/console  → Developer hesabı (~25 USD, bir kez)
+- release APK/AAB imzalı olmalı (debug APK store'a kabul edilmez)
+- Uygulama içi sunucu adresi: sabit tunnel HTTPS URL'in
+
+Microsoft Store (masaüstü KipGPT):
+- Partner Center hesabı
+- desktop/ klasöründeki paket (ayrı süreç)
+
+Önemli: Store uygulaması "PC'yi açmaz".
+PC'de Windows açılışında start_public.bat'ı
+"Başlangıç" klasörüne kısayol koyarak otomatik başlatabilirsin.
+
+----------------------------------------------------------
+Sorun giderme
+----------------------------------------------------------
+- Telefondan açılmıyor: PC'de start_public.bat açık mı?
+- 502 hatası: app.py (KipGPT Server) penceresi çalışıyor mu?
+- OAuth / Google: Google Console redirect URI'ye
+  https://SENIN-ALAN/auth/google/callback ekle
+  PUBLIC_BASE_URL=.env içinde aynı HTTPS kök adres olsun
