@@ -1,5 +1,6 @@
 package com.kipgpt.app.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -7,7 +8,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -29,10 +32,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.kipgpt.app.R
 import com.kipgpt.app.data.ApiClient
 import com.kipgpt.app.data.LoginRequest
 import com.kipgpt.app.data.RegisterRequest
@@ -66,11 +72,19 @@ fun LoginScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .verticalScroll(rememberScrollState())
                 .padding(24.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("KipGPT", style = MaterialTheme.typography.headlineLarge)
+            Image(
+                painter = painterResource(R.drawable.kipgpt_logo),
+                contentDescription = "KipGPT",
+                modifier = Modifier
+                    .fillMaxWidth(0.72f)
+                    .height(180.dp),
+                contentScale = ContentScale.Fit,
+            )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 if (isRegister.value) "Yeni hesap oluşturun" else "Hesabınıza giriş yapın",
