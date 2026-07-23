@@ -3,7 +3,8 @@ from functools import wraps
 from flask import current_app, jsonify, request
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 
-TOKEN_MAX_AGE = 30 * 24 * 3600
+# Telefon oturumu: çıkış yapılana kadar (web ile aynı; ~100 yıl pratik üst sınır)
+TOKEN_MAX_AGE = 36500 * 24 * 3600
 
 
 def _serializer(secret_key):
