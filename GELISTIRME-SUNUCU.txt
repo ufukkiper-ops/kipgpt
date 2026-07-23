@@ -3,8 +3,17 @@ KipGPT — Geliştirme PC ↔ Sunucu PC
 
 Roller
 ------
-• Geliştirme PC  → kod yaz, dene (start.bat), GitHub'a gönder (gonder.bat)
+• Geliştirme PC  → kod yaz, dene (start.bat / desktop\start_local.bat), GitHub'a gönder (gonder.bat)
 • Sunucu PC      → start_public.bat + tünel, veriler burada, guncelle.bat ile çek
+• Masaüstü / telefon → her zaman sunucu PC'ye bağlanır (tünel URL)
+
+Masaüstü uygulama
+----------------
+• İnce istemci: desktop\start.bat
+• Sunucu adresi: desktop\default_server_url.txt
+  (ör. https://xxxx.trycloudflare.com)
+• Tünel URL değişince bu dosyayı güncelle → gonder.bat → diğer PC guncelle.bat / git pull
+• Sadece yerel Flask denemek için: desktop\start_local.bat
 
 Bu makine (sunucu) dosyaları
 ----------------------------
@@ -12,6 +21,7 @@ Bu makine (sunucu) dosyaları
   guncelle.bat         git pull + sunucuyu yeniden başlat
   ilk-kurulum-git.bat  İlk kez Git + GitHub bağlama
   gonder.bat           Geliştirme PC'de: commit + push
+  desktop\start.bat    Masaüstü istemci (uzak sunucu)
 
 Kurulum sırası (bir kez)
 ------------------------

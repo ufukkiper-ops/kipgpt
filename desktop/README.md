@@ -2,12 +2,22 @@
 
 Windows (ve Linux/macOS) için native pencere. Mevcut web arayüzünü **pywebview** ile açar; arka planda yerel Flask çalışır.
 
-## Hızlı başlat (geliştirme)
+## Hızlı başlat (istemci — sunucu ev PC’sinde)
+
+Sunucu bu (ev) PC’de `start_public.bat` ile çalışır. Masaüstü uygulama **uzak sunucuya** bağlanır.
+
+Adres dosyası: `desktop/default_server_url.txt` (tünel HTTPS adresi)
 
 ### Windows
 
 ```bat
 desktop\start.bat
+```
+
+### Yerelde backend denemek (geliştirme)
+
+```bat
+desktop\start_local.bat
 ```
 
 ### Linux / macOS
@@ -17,14 +27,14 @@ chmod +x desktop/start.sh
 ./desktop/start.sh
 ```
 
-İlk çalıştırmada `.venv` kurulur. `.env` yoksa `.env.example` kopyalanır — en azından `FLASK_SECRET_KEY` ve `OPENAI_API_KEY` doldurun.
+İlk çalıştırmada `.venv` kurulur. `.env` yoksa `.env.example` kopyalanır — en azından `FLASK_SECRET_KEY` ve `OPENAI_API_KEY` doldurun (sunucu PC’de).
 
 ## Uzak sunucu (ince istemci)
 
-Render’daki KipGPT’yi masaüstünde açmak için:
+Varsayılan artık `desktop/default_server_url.txt` veya:
 
 ```bat
-set KIPGPT_SERVER_URL=https://kip-asistan.onrender.com
+set KIPGPT_SERVER_URL=https://SENIN-TUNEL.trycloudflare.com
 desktop\start.bat
 ```
 

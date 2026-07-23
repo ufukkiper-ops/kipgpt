@@ -95,11 +95,53 @@ def _run_flask(host: str, port: int) -> None:
     )
 
 
+def _default_remote_server() -> str:
+    """Sunucu PC tünel adresi (geliştirme PC / diğer istemciler)."""
+    for path in (
+        ROOT / "desktop" / "default_server_url.txt",
+        ROOT / "tunnel" / "current_url.txt",
+        Path(sys.executable).resolve().parent / "default_server_url.txt",
+    ):
+        try:
+            if path.is_file():
+                url = path.read_text(encoding="utf-8").strip().splitlines()[0].strip()
+                if url.startswith("http://") or url.startswith("https://"):
+                    return url.rstrip("/")
+        except OSError:
+            continue
+    env_public = (os.environ.get("PUBLIC_BASE_URL") or "").strip().rstrip("/")
+    if env_public.startswith("http"):
+        return env_public
+    return ""
+
+
 def _resolve_target_url(settings: dict) -> tuple[str, bool]:
-    """(url, starts_local_server)."""
+    """(url, starts_local_server).
+
+    Varsayılan: uzak sunucu (bu evdeki sunucu PC / tünel).
+    Yerel Flask ancak KIPGPT_USE_LOCAL=1 veya KIPGPT_SERVER_URL=local.
+    """
+    use_local = (os.environ.get("KIPGPT_USE_LOCAL") or "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
     remote = (os.environ.get("KIPGPT_SERVER_URL") or "").strip().rstrip("/")
+    if remote.lower() in {"local", "localhost", "self"}:
+        use_local = True
+        remote = ""
+
+    if use_local:
+        return settings["local_base"] + settings["start_path"], True
+
+    if not remote:
+        remote = _default_remote_server()
+
     if remote:
         return remote + settings["start_path"], False
+
+    # Dosya yoksa eski davranış: yerel sunucu
     return settings["local_base"] + settings["start_path"], True
 
 
