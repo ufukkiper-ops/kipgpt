@@ -1,7 +1,10 @@
 package com.kipgpt.app.ui
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,18 +12,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -32,12 +36,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.kipgpt.app.R
 import com.kipgpt.app.data.ApiClient
 import com.kipgpt.app.data.LoginRequest
@@ -45,6 +55,16 @@ import com.kipgpt.app.data.RegisterRequest
 import com.kipgpt.app.data.SessionManager
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
+
+private val AuthBgTop = Color(0xFF0B0E14)
+private val AuthBgMid = Color(0xFF121826)
+private val AuthCard = Color(0xEB121622)
+private val AuthBorder = Color(0x2E94A3B8)
+private val AuthInputBg = Color(0xFF0F1420)
+private val AuthText = Color(0xFFF3F4F6)
+private val AuthMuted = Color(0xFF94A3B8)
+private val AuthCyan = Color(0xFF67E8F9)
+private val AuthBlue = Color(0xFF1A73E8)
 
 @Composable
 fun LoginScreen(
@@ -54,6 +74,7 @@ fun LoginScreen(
 ) {
     val email = remember { mutableStateOf("") }
     val password = remember { mutableStateOf("") }
+    val password2 = remember { mutableStateOf("") }
     val showPassword = remember { mutableStateOf(false) }
     val loading = remember { mutableStateOf(false) }
     val isRegister = remember { mutableStateOf(false) }
@@ -67,132 +88,237 @@ fun LoginScreen(
         }
     }
 
-    Scaffold(snackbarHost = { SnackbarHost(snackbar) }) { padding ->
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(AuthBgTop, AuthBgMid, AuthBgTop),
+                ),
+            ),
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(24.dp),
+                .padding(16.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Image(
-                painter = painterResource(R.drawable.kipgpt_logo),
-                contentDescription = "KipGPT",
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth(0.72f)
-                    .height(180.dp),
-                contentScale = ContentScale.Fit,
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                if (isRegister.value) "Yeni hesap oluşturun" else "Hesabınıza giriş yapın",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                "Veriler bilgisayarınızdaki sunucuda kalır.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(modifier = Modifier.height(24.dp))
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(AuthCard)
+                    .border(1.dp, AuthBorder, RoundedCornerShape(20.dp))
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.kipgpt_logo),
+                    contentDescription = "KipGPT — Akıllı • Güvenilir • Yanında",
+                    modifier = Modifier
+                        .fillMaxWidth(0.85f)
+                        .height(200.dp),
+                    contentScale = ContentScale.Fit,
+                )
 
-            OutlinedTextField(
-                value = email.value,
-                onValueChange = { email.value = it },
-                label = { Text("E-posta") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            OutlinedTextField(
-                value = password.value,
-                onValueChange = { password.value = it },
-                label = { Text("Şifre") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                visualTransformation = if (showPassword.value) {
-                    VisualTransformation.None
-                } else {
-                    PasswordVisualTransformation()
-                },
-                trailingIcon = {
-                    IconButton(onClick = { showPassword.value = !showPassword.value }) {
-                        Icon(
-                            if (showPassword.value) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                            contentDescription = "Şifreyi göster",
-                        )
-                    }
-                },
-            )
-            if (isRegister.value) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    "En az 6 karakter; büyük + küçük harf, sayı ve herhangi bir özel işaret",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    text = if (isRegister.value) "Kayıt Ol" else "Giriş Yap",
+                    color = AuthText,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center,
                 )
-            }
+                Spacer(modifier = Modifier.height(16.dp))
 
-            Spacer(modifier = Modifier.height(20.dp))
+                AuthField(
+                    value = email.value,
+                    onValueChange = { email.value = it },
+                    placeholder = if (isRegister.value) {
+                        "E-posta adresiniz"
+                    } else {
+                        "E-posta veya kullanıcı adı"
+                    },
+                    keyboardType = KeyboardType.Email,
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                AuthField(
+                    value = password.value,
+                    onValueChange = { password.value = it },
+                    placeholder = if (isRegister.value) "KipGPT giriş şifreniz" else "Şifre",
+                    keyboardType = KeyboardType.Password,
+                    isPassword = true,
+                    showPassword = showPassword.value,
+                    onTogglePassword = { showPassword.value = !showPassword.value },
+                )
+                if (isRegister.value) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    AuthField(
+                        value = password2.value,
+                        onValueChange = { password2.value = it },
+                        placeholder = "Şifre tekrar",
+                        keyboardType = KeyboardType.Password,
+                        isPassword = true,
+                        showPassword = showPassword.value,
+                        onTogglePassword = { showPassword.value = !showPassword.value },
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "En az 6 karakter; büyük + küçük harf, sayı ve özel işaret",
+                        color = AuthMuted,
+                        fontSize = 12.sp,
+                        textAlign = TextAlign.Start,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
 
-            Button(
-                onClick = {
-                    scope.launch {
-                        if (isRegister.value) {
-                            val pwdError = validateRegisterPassword(password.value)
-                            if (pwdError != null) {
-                                snackbar.showSnackbar(pwdError)
-                                return@launch
+                Spacer(modifier = Modifier.height(14.dp))
+                Button(
+                    onClick = {
+                        scope.launch {
+                            if (isRegister.value) {
+                                val pwdError = validateRegisterPassword(password.value)
+                                if (pwdError != null) {
+                                    snackbar.showSnackbar(pwdError)
+                                    return@launch
+                                }
+                                if (password.value != password2.value) {
+                                    snackbar.showSnackbar("Şifreler eşleşmiyor.")
+                                    return@launch
+                                }
+                            }
+                            loading.value = true
+                            try {
+                                val response = if (isRegister.value) {
+                                    apiClient.api.register(
+                                        RegisterRequest(
+                                            email = email.value.trim(),
+                                            password = password.value,
+                                            link_gmail = false,
+                                        ),
+                                    )
+                                } else {
+                                    apiClient.api.login(
+                                        LoginRequest(email.value.trim(), password.value),
+                                    )
+                                }
+                                sessionManager.saveToken(response.token, response.user.email)
+                                apiClient.updateToken(response.token)
+                                onLoggedIn()
+                            } catch (e: HttpException) {
+                                val msg = e.response()?.errorBody()?.string()?.let {
+                                    it.substringAfter("\"error\":\"").substringBefore("\"")
+                                } ?: "Giriş başarısız"
+                                snackbar.showSnackbar(msg)
+                            } catch (e: Exception) {
+                                snackbar.showSnackbar("Bağlantı hatası: ${e.message}")
+                            } finally {
+                                loading.value = false
                             }
                         }
-                        loading.value = true
-                        try {
-                            val response = if (isRegister.value) {
-                                apiClient.api.register(
-                                    RegisterRequest(
-                                        email = email.value.trim(),
-                                        password = password.value,
-                                        link_gmail = false,
-                                    ),
-                                )
-                            } else {
-                                apiClient.api.login(
-                                    LoginRequest(email.value.trim(), password.value),
-                                )
-                            }
-                            sessionManager.saveToken(response.token, response.user.email)
-                            apiClient.updateToken(response.token)
-                            onLoggedIn()
-                        } catch (e: HttpException) {
-                            val msg = e.response()?.errorBody()?.string()?.let {
-                                it.substringAfter("\"error\":\"").substringBefore("\"")
-                            } ?: "Giriş başarısız"
-                            snackbar.showSnackbar(msg)
-                        } catch (e: Exception) {
-                            snackbar.showSnackbar("Bağlantı hatası: ${e.message}")
-                        } finally {
-                            loading.value = false
-                        }
+                    },
+                    enabled = !loading.value &&
+                        email.value.isNotBlank() &&
+                        password.value.isNotBlank() &&
+                        (!isRegister.value || password2.value.isNotBlank()),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = AuthBlue,
+                        contentColor = Color.White,
+                        disabledContainerColor = AuthBlue.copy(alpha = 0.4f),
+                    ),
+                ) {
+                    if (loading.value) {
+                        CircularProgressIndicator(
+                            color = Color.White,
+                            modifier = Modifier.height(22.dp),
+                            strokeWidth = 2.dp,
+                        )
+                    } else {
+                        Text(
+                            if (isRegister.value) "Kayıt Ol" else "Giriş Yap",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        )
                     }
-                },
-                enabled = !loading.value && email.value.isNotBlank() && password.value.isNotBlank(),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                if (loading.value) {
-                    CircularProgressIndicator(modifier = Modifier.height(20.dp))
-                } else {
-                    Text(if (isRegister.value) "Kayıt Ol" else "Giriş Yap")
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                TextButton(onClick = { isRegister.value = !isRegister.value }) {
+                    Text(
+                        if (isRegister.value) {
+                            "Zaten hesabın var mı? Giriş Yap"
+                        } else {
+                            "Hesabın yok mu? Kayıt Ol"
+                        },
+                        color = AuthCyan,
+                        fontSize = 14.sp,
+                    )
                 }
             }
-
-            TextButton(onClick = { isRegister.value = !isRegister.value }) {
-                Text(if (isRegister.value) "Zaten hesabım var" else "Yeni hesap oluştur")
-            }
         }
+
+        SnackbarHost(
+            hostState = snackbar,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(16.dp),
+        )
     }
+}
+
+@Composable
+private fun AuthField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    keyboardType: KeyboardType,
+    isPassword: Boolean = false,
+    showPassword: Boolean = false,
+    onTogglePassword: (() -> Unit)? = null,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        placeholder = { Text(placeholder, color = AuthMuted) },
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        visualTransformation = if (isPassword && !showPassword) {
+            PasswordVisualTransformation()
+        } else {
+            VisualTransformation.None
+        },
+        trailingIcon = if (isPassword && onTogglePassword != null) {
+            {
+                IconButton(onClick = onTogglePassword) {
+                    Icon(
+                        if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                        contentDescription = "Şifreyi göster",
+                        tint = AuthMuted,
+                    )
+                }
+            }
+        } else {
+            null
+        },
+        shape = RoundedCornerShape(10.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedTextColor = AuthText,
+            unfocusedTextColor = AuthText,
+            cursorColor = AuthCyan,
+            focusedBorderColor = AuthCyan.copy(alpha = 0.55f),
+            unfocusedBorderColor = Color(0x4794A3B8),
+            focusedContainerColor = AuthInputBg,
+            unfocusedContainerColor = AuthInputBg,
+            disabledContainerColor = AuthInputBg,
+        ),
+    )
 }
 
 private fun validateRegisterPassword(password: String): String? {
