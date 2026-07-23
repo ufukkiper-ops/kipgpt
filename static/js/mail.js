@@ -106,15 +106,6 @@
         readSet.add(mailId);
         saveReadSet(readSet);
 
-        const row = document.querySelector('[data-mail-id="' + mailId + '"]');
-        if (row) {
-            row.classList.remove("unread");
-            row.classList.add("read");
-            if (currentFolder === "unread") {
-                row.hidden = true;
-            }
-        }
-
         const mail = mailMap[mailId];
         if (mail) mail.unread = false;
     }
@@ -128,56 +119,152 @@
             saveReadSet(readSet);
         }
 
-        const row = document.querySelector('[data-mail-id="' + mailId + '"]');
-        if (row) {
-            row.classList.add("unread");
-            row.classList.remove("read");
-            row.hidden = false;
-        }
-
         const mail = mailMap[mailId];
         if (mail) mail.unread = true;
     }
 
+    function expandThreadIds(ids) {
+        const out = [];
+        const seen = {};
+        (ids || []).forEach(function (rawId) {
+            const mailId = String(rawId || "").trim();
+            if (!mailId) return;
+
+            const mail = mailMap[mailId];
+            const fromMail = (mail && mail.thread_ids) || [];
+            const row = document.querySelector('.gmail-row[data-mail-id="' + mailId + '"]');
+            const fromRow = row
+                ? String(row.dataset.threadIds || "")
+                    .split(",")
+                    .map(function (v) { return v.trim(); })
+                    .filter(Boolean)
+                : [];
+
+            const group = fromRow.length ? fromRow : (fromMail.length ? fromMail : [mailId]);
+            group.forEach(function (id) {
+                if (id && !seen[id]) {
+                    seen[id] = true;
+                    out.push(id);
+                }
+            });
+            if (!seen[mailId]) {
+                seen[mailId] = true;
+                out.push(mailId);
+            }
+        });
+        return out;
+    }
+
+    function updateRowsReadState(ids, unread) {
+        const idSet = {};
+        (ids || []).forEach(function (id) { idSet[String(id)] = true; });
+
+        document.querySelectorAll(".gmail-row").forEach(function (row) {
+            const rowId = row.dataset.mailId;
+            const threadIds = String(row.dataset.threadIds || "")
+                .split(",")
+                .map(function (v) { return v.trim(); })
+                .filter(Boolean);
+            const hit = (rowId && idSet[rowId]) || threadIds.some(function (id) { return idSet[id]; });
+            if (!hit) return;
+
+            if (unread) {
+                row.classList.add("unread");
+                row.classList.remove("read");
+                row.hidden = false;
+            } else {
+                row.classList.remove("unread");
+                row.classList.add("read");
+                if (currentFolder === "unread") {
+                    row.hidden = true;
+                }
+            }
+            const mail = mailMap[rowId];
+            if (mail) mail.unread = unread;
+            if (mail && Array.isArray(mail.thread_messages)) {
+                mail.thread_messages.forEach(function (msg) {
+                    if (msg) msg.unread = unread;
+                });
+            }
+        });
+
+        document.querySelectorAll(".thread-msg").forEach(function (el) {
+            const mid = el.getAttribute("data-mail-id");
+            if (mid && idSet[mid]) {
+                el.classList.toggle("is-unread", unread);
+            }
+        });
+    }
+
     function persistReadOnServer(mailIds) {
-        const ids = (mailIds || []).filter(Boolean);
-        if (!ids.length) return;
-        try {
-            fetch("/mail/mark-read", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    mail_ids: ids,
-                    folder: currentFolder === "unread" ? "inbox" : currentFolder,
-                    account: currentAccount || undefined,
-                }),
-                keepalive: true,
-            }).catch(function () {});
-        } catch (_err) {}
+        const ids = expandThreadIds(mailIds);
+        if (!ids.length) return Promise.resolve({ ok: false, marked: 0 });
+        return fetch("/mail/mark-read", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                mail_ids: ids,
+                folder: currentFolder === "unread" ? "inbox" : currentFolder,
+                account: currentAccount || undefined,
+                expand_threads: true,
+            }),
+            keepalive: true,
+        }).then(function (res) {
+            return res.json().catch(function () { return { ok: res.ok }; });
+        }).catch(function () {
+            return { ok: false };
+        });
     }
 
     function persistUnreadOnServer(mailIds) {
-        const ids = (mailIds || []).filter(Boolean);
-        if (!ids.length) return;
-        try {
-            fetch("/mail/mark-unread", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    mail_ids: ids,
-                    folder: currentFolder === "unread" ? "inbox" : currentFolder,
-                    account: currentAccount || undefined,
-                }),
-                keepalive: true,
-            }).catch(function () {});
-        } catch (_err) {}
+        const ids = expandThreadIds(mailIds);
+        if (!ids.length) return Promise.resolve({ ok: false, marked: 0 });
+        return fetch("/mail/mark-unread", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                mail_ids: ids,
+                folder: currentFolder === "unread" ? "inbox" : currentFolder,
+                account: currentAccount || undefined,
+                expand_threads: true,
+            }),
+            keepalive: true,
+        }).then(function (res) {
+            return res.json().catch(function () { return { ok: res.ok }; });
+        }).catch(function () {
+            return { ok: false };
+        });
     }
 
-    function activeMailIds() {
-        const mailId = document.body.dataset.activeMailId || "";
-        const mail = mailMap[mailId] || currentMailForReply;
-        if (!mail) return mailId ? [mailId] : [];
-        return [mail.id].concat(mail.thread_ids || []).filter(Boolean);
+    function markSelectionRead(unread) {
+        // Önce seçili/checkbox; yoksa açık mail
+        let ids = [];
+        if (typeof getMailIdsForAction === "function") {
+            ids = getMailIdsForAction();
+        }
+        if (!ids.length) {
+            const mailId = document.body.dataset.activeMailId || "";
+            const mail = mailMap[mailId];
+            ids = mail ? [mail.id].concat(mail.thread_ids || []) : (mailId ? [mailId] : []);
+        }
+        ids = expandThreadIds(ids);
+        if (!ids.length) {
+            window.alert("Önce listeden bir mail seçin veya işaretleyin.");
+            return;
+        }
+
+        ids.forEach(function (id) {
+            if (unread) markAsUnread(id);
+            else markAsRead(id);
+        });
+        updateRowsReadState(ids, unread);
+
+        const persist = unread ? persistUnreadOnServer : persistReadOnServer;
+        persist(ids).then(function (result) {
+            if (result && result.ok === false) {
+                window.alert("Okundu durumu sunucuya yazılamadı. Sayfayı yenileyip tekrar deneyin.");
+            }
+        });
     }
 
     function applyReadState() {
@@ -616,11 +703,10 @@
         const row = document.querySelector('[data-mail-id="' + mail.id + '"]');
         if (row) row.classList.add("selected");
 
-        markAsRead(mail.id);
-        (mail.thread_ids || []).forEach(function (id) {
-            markAsRead(id);
-        });
-        persistReadOnServer([mail.id].concat(mail.thread_ids || []));
+        const threadIds = expandThreadIds([mail.id].concat(mail.thread_ids || []));
+        threadIds.forEach(markAsRead);
+        updateRowsReadState(threadIds, false);
+        persistReadOnServer(threadIds);
 
         if (isDraftMail(mail)) {
             showDraftView();
@@ -2003,24 +2089,22 @@
     setupReadStateButtons();
 
     function setupReadStateButtons() {
-        const markReadBtn = document.getElementById("mark-read-btn");
-        const markUnreadBtn = document.getElementById("mark-unread-btn");
+        const listMarkReadBtn = document.getElementById("list-mark-read-btn");
+        const listMarkUnreadBtn = document.getElementById("list-mark-unread-btn");
 
-        if (markReadBtn) {
-            markReadBtn.addEventListener("click", function () {
-                const ids = activeMailIds();
-                if (!ids.length) return;
-                ids.forEach(markAsRead);
-                persistReadOnServer(ids);
+        if (listMarkReadBtn) {
+            listMarkReadBtn.addEventListener("click", function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                markSelectionRead(false);
             });
         }
 
-        if (markUnreadBtn) {
-            markUnreadBtn.addEventListener("click", function () {
-                const ids = activeMailIds();
-                if (!ids.length) return;
-                ids.forEach(markAsUnread);
-                persistUnreadOnServer(ids);
+        if (listMarkUnreadBtn) {
+            listMarkUnreadBtn.addEventListener("click", function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                markSelectionRead(true);
             });
         }
     }

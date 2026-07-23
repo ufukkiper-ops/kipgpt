@@ -260,7 +260,8 @@ def mail_mark_read():
         from services.mail_ui import get_imap_folder_name
 
         imap_folder = get_imap_folder_name(folder, mail_config)
-        marked = mark_mails_as_read(mail_config, imap_folder, mail_ids)
+        expand_threads = bool(data.get("expand_threads", True))
+        marked = mark_mails_as_read(mail_config, imap_folder, mail_ids, expand_threads=expand_threads)
         return jsonify({"ok": True, "marked": marked})
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500
@@ -298,7 +299,8 @@ def mail_mark_unread():
         from services.mail_ui import get_imap_folder_name
 
         imap_folder = get_imap_folder_name(folder, mail_config)
-        marked = mark_mails_as_unread(mail_config, imap_folder, mail_ids)
+        expand_threads = bool(data.get("expand_threads", True))
+        marked = mark_mails_as_unread(mail_config, imap_folder, mail_ids, expand_threads=expand_threads)
         return jsonify({"ok": True, "marked": marked})
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500

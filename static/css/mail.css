@@ -1019,8 +1019,10 @@ body.dialog-open .account-remove-form {
     gap: 2px;
 }
 
-.list-restore-btn:not([hidden]) {
-    margin-left: 2px;
+.list-toolbar .toolbar-text-btn {
+    height: 32px;
+    padding: 0 8px;
+    font-size: 12px;
 }
 
 .list-restore-btn:not([hidden]) .material-icons-outlined {

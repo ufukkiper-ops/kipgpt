@@ -765,7 +765,7 @@ def get_archive(config, count=20):
     return get_first_available_folder(config, FOLDER_CANDIDATES["archive"], count)
 
 
-def mark_mails_as_read(config, folder, mail_ids):
+def mark_mails_as_read(config, folder, mail_ids, expand_threads=False):
     """IMAP: \\Seen bayrağı ekle. Gmail API hesaplarında Gmail etiketini kaldır."""
     from services.gmail_api import is_gmail_api_config, mark_mails_as_read as gmail_mark_read
 
@@ -779,6 +779,11 @@ def mark_mails_as_read(config, folder, mail_ids):
     mail = connect_mail(config, folder or "INBOX")
     marked = 0
     try:
+        if expand_threads:
+            try:
+                ids = _expand_thread_uids_in_folder(mail, ids)
+            except Exception as exc:
+                print("MARK-READ THREAD EXPAND HATASI:", exc)
         for mail_id in ids:
             try:
                 status, _ = mail.uid("store", _mail_id_bytes(mail_id), "+FLAGS", "(\\Seen)")
@@ -794,7 +799,7 @@ def mark_mails_as_read(config, folder, mail_ids):
     return marked
 
 
-def mark_mails_as_unread(config, folder, mail_ids):
+def mark_mails_as_unread(config, folder, mail_ids, expand_threads=False):
     """IMAP: \\Seen kaldır. Gmail API: UNREAD etiketi ekle."""
     from services.gmail_api import is_gmail_api_config, mark_mails_as_unread as gmail_mark_unread
 
@@ -808,6 +813,11 @@ def mark_mails_as_unread(config, folder, mail_ids):
     mail = connect_mail(config, folder or "INBOX")
     marked = 0
     try:
+        if expand_threads:
+            try:
+                ids = _expand_thread_uids_in_folder(mail, ids)
+            except Exception as exc:
+                print("MARK-UNREAD THREAD EXPAND HATASI:", exc)
         for mail_id in ids:
             try:
                 status, _ = mail.uid("store", _mail_id_bytes(mail_id), "-FLAGS", "(\\Seen)")
