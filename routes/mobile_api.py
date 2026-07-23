@@ -39,6 +39,7 @@ from users import (
     get_user_id,
     hash_password,
     is_valid_email,
+    validate_password_strength,
 )
 
 mobile_api_bp = Blueprint("mobile_api", __name__, url_prefix="/api/v1")
@@ -158,6 +159,9 @@ def api_register():
         return jsonify({"error": "E-posta ve şifre gerekli."}), 400
     if not is_valid_email(email):
         return jsonify({"error": "Geçerli bir e-posta adresi girin."}), 400
+    password_error = validate_password_strength(password)
+    if password_error:
+        return jsonify({"error": password_error}), 400
     if email_exists(email):
         return jsonify({"error": "Bu e-posta zaten kayıtlı."}), 409
 

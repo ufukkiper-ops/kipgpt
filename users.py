@@ -6,6 +6,31 @@ from services.data_paths import ensure_data_dir, users_file_path
 DEV_QUICK_USERNAME = "q"
 DEV_QUICK_PASSWORD = "q"
 
+# Kayıt şifresi: en az 6 karakter, büyük+küçük harf, özel karakter
+PASSWORD_SPECIAL_CHARS = r"%&/+\^'\"!@#\$\*\(\)_\-=\{\}\[\]\|:;<>\?,\.~\\`"
+PASSWORD_SPECIAL_RE = re.compile(f"[{PASSWORD_SPECIAL_CHARS}]")
+PASSWORD_RULES_HINT = (
+    "Şifre en az 6 karakter olmalı; en az bir büyük harf, bir küçük harf "
+    "ve bir özel karakter içermeli (ör. % & / + ^ ' ! @ #)."
+)
+
+
+def validate_password_strength(password):
+    """Geçerliyse None, aksi halde Türkçe hata mesajı döner."""
+    value = password or ""
+    if len(value) < 6:
+        return "Şifre en az 6 karakter olmalı."
+    if not re.search(r"[a-z]", value):
+        return "Şifrede en az bir küçük harf (a-z) olmalı."
+    if not re.search(r"[A-Z]", value):
+        return "Şifrede en az bir büyük harf (A-Z) olmalı."
+    if not PASSWORD_SPECIAL_RE.search(value):
+        return (
+            "Şifrede en az bir özel karakter olmalı "
+            "(ör. % & / + ^ ' ! @ # $ *)."
+        )
+    return None
+
 
 def is_dev_quick_login(identifier, password):
     from services.security import allow_dev_quick_login

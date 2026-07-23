@@ -21,6 +21,7 @@ from users import (
     link_google_mail_to_user,
     load_users,
     save_users,
+    validate_password_strength,
 )
 
 auth_bp = Blueprint("auth", __name__)
@@ -58,27 +59,31 @@ def register():
             error = "Geçerli bir e-posta adresi girin."
         elif password != password2:
             error = "Şifreler eşleşmiyor."
-        elif email_exists(email):
-            error = "Bu e-posta adresi zaten kayıtlı."
         else:
-            users = load_users()
-            users.append({
-                "email": email,
-                "username": email,
-                "password": hash_password(password),
-                "auth_provider": "local",
-                "mail_accounts": [],
-            })
-            save_users(users)
-            _init_user_data(email)
-            session["user"] = email
-            # Istege bagli: kayit formunda "Gmail'i de bagla" secildiyse
-            if google_enabled and request.form.get("link_gmail") == "1":
-                session["mail_flash_success"] = (
-                    "Hesabınız oluşturuldu. Gmail’i bağlamak için Google hesabınızı onaylayın."
-                )
-                return redirect(url_for("mail_oauth.oauth_start", provider="google"))
-            return redirect(url_for("mail.mail_page"))
+            password_error = validate_password_strength(password)
+            if password_error:
+                error = password_error
+            elif email_exists(email):
+                error = "Bu e-posta adresi zaten kayıtlı."
+            else:
+                users = load_users()
+                users.append({
+                    "email": email,
+                    "username": email,
+                    "password": hash_password(password),
+                    "auth_provider": "local",
+                    "mail_accounts": [],
+                })
+                save_users(users)
+                _init_user_data(email)
+                session["user"] = email
+                # Istege bagli: kayit formunda "Gmail'i de bagla" secildiyse
+                if google_enabled and request.form.get("link_gmail") == "1":
+                    session["mail_flash_success"] = (
+                        "Hesabınız oluşturuldu. Gmail’i bağlamak için Google hesabınızı onaylayın."
+                    )
+                    return redirect(url_for("mail_oauth.oauth_start", provider="google"))
+                return redirect(url_for("mail.mail_page"))
 
     return render_template(
         "register.html",

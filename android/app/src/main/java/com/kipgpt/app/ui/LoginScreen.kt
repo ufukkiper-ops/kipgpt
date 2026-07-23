@@ -96,7 +96,7 @@ fun LoginScreen(
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             )
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(Modifier = Modifier.height(12.dp))
             OutlinedTextField(
                 value = password.value,
                 onValueChange = { password.value = it },
@@ -117,12 +117,27 @@ fun LoginScreen(
                     }
                 },
             )
+            if (isRegister.value) {
+                Spacer(Modifier = Modifier.height(8.dp))
+                Text(
+                    "En az 6 karakter; büyük + küçük harf ve özel karakter (ör. % & / + ^ ! @ #)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
 
             Spacer(modifier = Modifier.height(20.dp))
 
             Button(
                 onClick = {
                     scope.launch {
+                        if (isRegister.value) {
+                            val pwdError = validateRegisterPassword(password.value)
+                            if (pwdError != null) {
+                                snackbar.showSnackbar(pwdError)
+                                return@launch
+                            }
+                        }
                         loading.value = true
                         try {
                             val response = if (isRegister.value) {
@@ -168,4 +183,15 @@ fun LoginScreen(
             }
         }
     }
+}
+
+private fun validateRegisterPassword(password: String): String? {
+    if (password.length < 6) return "Şifre en az 6 karakter olmalı."
+    if (!password.any { it.isLowerCase() }) return "Şifrede en az bir küçük harf (a-z) olmalı."
+    if (!password.any { it.isUpperCase() }) return "Şifrede en az bir büyük harf (A-Z) olmalı."
+    val special = "%&/+^'\"!@#$*()_-={}[]|:;<>?,.~\\`"
+    if (password.none { it in special }) {
+        return "Şifrede en az bir özel karakter olmalı (ör. % & / + ^ ! @ #)."
+    }
+    return null
 }

@@ -17,11 +17,34 @@
 <div class="error">{{ error }}</div>
 {% endif %}
 
-<form method="post" class="auth-form">
+<form method="post" class="auth-form" id="register-form">
 
-<input type="email" name="email" placeholder="E-posta adresiniz" required>
-<input type="password" name="password" placeholder="KipGPT giriş şifreniz" required>
-<input type="password" name="password2" placeholder="Şifre tekrar" required>
+<input type="email" name="email" placeholder="E-posta adresiniz" required autocomplete="email">
+<input
+    type="password"
+    name="password"
+    id="register-password"
+    placeholder="KipGPT giriş şifreniz"
+    required
+    minlength="6"
+    autocomplete="new-password"
+>
+<input
+    type="password"
+    name="password2"
+    id="register-password2"
+    placeholder="Şifre tekrar"
+    required
+    minlength="6"
+    autocomplete="new-password"
+>
+
+<ul class="password-rules" aria-label="Şifre kuralları">
+    <li>En az <strong>6 karakter</strong></li>
+    <li>En az bir <strong>büyük harf</strong> (A–Z)</li>
+    <li>En az bir <strong>küçük harf</strong> (a–z)</li>
+    <li>En az bir <strong>özel karakter</strong> (ör. <code>% &amp; / + ^ ' ! @ #</code>)</li>
+</ul>
 
 <button class="btn btn-blue btn-block" type="submit">Kayıt Ol</button>
 
@@ -35,5 +58,27 @@
 
 </div>
 </div>
+
+<script>
+(function () {
+    var form = document.getElementById("register-form");
+    if (!form) return;
+    form.addEventListener("submit", function (e) {
+        var p = (document.getElementById("register-password") || {}).value || "";
+        var p2 = (document.getElementById("register-password2") || {}).value || "";
+        var special = /[%&/+\^'"!@#\$\*\(\)_\-={}\[\]\|:;<>\?,\.~\\`]/;
+        var msg = "";
+        if (p.length < 6) msg = "Şifre en az 6 karakter olmalı.";
+        else if (!/[a-z]/.test(p)) msg = "Şifrede en az bir küçük harf (a-z) olmalı.";
+        else if (!/[A-Z]/.test(p)) msg = "Şifrede en az bir büyük harf (A-Z) olmalı.";
+        else if (!special.test(p)) msg = "Şifrede en az bir özel karakter olmalı (ör. % & / + ^ ' ! @ #).";
+        else if (p !== p2) msg = "Şifreler eşleşmiyor.";
+        if (msg) {
+            e.preventDefault();
+            alert(msg);
+        }
+    });
+})();
+</script>
 
 {% endblock %}
